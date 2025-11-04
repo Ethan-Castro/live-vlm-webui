@@ -7,6 +7,8 @@ import json
 import logging
 import os
 import signal
+import socket
+import subprocess
 import aiohttp
 from aiohttp import web
 from aiortc import RTCPeerConnection, RTCSessionDescription, MediaStreamTrack
@@ -30,6 +32,106 @@ vlm_service = None
 websockets = set()  # Track active WebSocket connections
 gpu_monitor = None  # GPU monitoring instance
 gpu_monitor_task = None  # Background task for GPU monitoring
+
+
+def is_port_available(port, host='0.0.0.0'):
+    """Check if a port is available for binding"""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.bind((host, port))
+        sock.close()
+        return True
+    except OSError:
+        return False
+
+
+def find_process_using_port(port):
+    """Find what process is using a port (Linux/Unix only)"""
+    try:
+        # Try lsof first (more reliable)
+        result = subprocess.run(
+            ['lsof', '-i', f':{port}', '-t'],
+            capture_output=True,
+            text=True,
+            timeout=2
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            pid = result.stdout.strip().split()[0]
+            # Get process name
+            name_result = subprocess.run(
+                ['ps', '-p', pid, '-o', 'comm='],
+                capture_output=True,
+                text=True,
+                timeout=2
+            )
+            if name_result.returncode == 0:
+                return f"PID {pid} ({name_result.stdout.strip()})"
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        # lsof not available, try netstat
+        try:
+            result = subprocess.run(
+                ['netstat', '-tulpn'],
+                capture_output=True,
+                text=True,
+                timeout=2
+            )
+            for line in result.stdout.split('\n'):
+                if f':{port}' in line and 'LISTEN' in line:
+                    parts = line.split()
+                    if len(parts) >= 7:
+                        return parts[-1]  # PID/Program name
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
+    return "unknown process"
+
+
+def find_available_port(start_port=8080, max_attempts=10):
+    """Find next available port starting from start_port"""
+    for port in range(start_port, start_port + max_attempts):
+        if is_port_available(port):
+            return port
+    return None
+
+
+async def detect_local_service_and_model():
+    """
+    Auto-detect available local VLM services and select a model
+    Returns: (api_base, model_name) or (None, None) if no service found
+    """
+    services = [
+        ("http://localhost:11434/v1", "Ollama"),
+        ("http://localhost:8000/v1", "vLLM"),
+        ("http://localhost:30000/v1", "SGLang"),
+    ]
+    
+    for api_base, service_name in services:
+        try:
+            # Try to connect to the service
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=2)) as session:
+                async with session.get(f"{api_base}/models") as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        models = data.get('data', [])
+                        if models:
+                            # Prefer vision models
+                            vision_keywords = ['vision', 'llava', 'llama-3.2', 'gemini']
+                            for model in models:
+                                model_id = model.get('id', '')
+                                if any(keyword in model_id.lower() for keyword in vision_keywords):
+                                    logger.info(f"✅ Auto-detected {service_name} at {api_base}")
+                                    logger.info(f"   Selected model: {model_id}")
+                                    return (api_base, model_id)
+                            
+                            # If no vision model found, use the first one
+                            model_id = models[0].get('id', '')
+                            logger.info(f"✅ Auto-detected {service_name} at {api_base}")
+                            logger.info(f"   Selected model: {model_id} (vision model preferred but not found)")
+                            return (api_base, model_id)
+        except Exception as e:
+            logger.debug(f"Service {service_name} not available at {api_base}: {e}")
+            continue
+    
+    return (None, None)
 
 
 async def index(request):
@@ -434,11 +536,11 @@ def main():
     )
     parser.add_argument("--host", default="0.0.0.0", help="Host to bind to (default: 0.0.0.0)")
     parser.add_argument("--port", type=int, default=8080, help="Port to bind to (default: 8080)")
-    parser.add_argument("--model", required=True, help="VLM model name (e.g., llama-3.2-11b-vision-instruct)")
-    parser.add_argument("--api-base", default="http://localhost:8000/v1",
-                        help="VLM API base URL - OpenAI-compatible (default: http://localhost:8000/v1)")
+    parser.add_argument("--auto-port", action="store_true", help="Automatically find available port if default is taken")
+    parser.add_argument("--model", help="VLM model name (optional, will auto-detect if not specified)")
+    parser.add_argument("--api-base", help="VLM API base URL (optional, will auto-detect or use NVIDIA NGC)")
     parser.add_argument("--api-key", default="EMPTY",
-                        help="API key - use 'EMPTY' for local servers (default: EMPTY)")
+                        help="API key - use 'EMPTY' for local servers, required for NVIDIA NGC/OpenAI (default: EMPTY)")
     parser.add_argument("--prompt", default="Describe what you see in this image in one sentence.",
                         help="Prompt to send to VLM (default: 'Describe what you see...')")
     parser.add_argument("--process-every", type=int, default=30, help="Process every Nth frame")
@@ -447,17 +549,48 @@ def main():
 
     args = parser.parse_args()
 
+    # Auto-detect service and model if not specified
+    api_base = args.api_base
+    model = args.model
+    api_key = args.api_key
+    
+    if not model or not api_base:
+        logger.info("No model/API specified, auto-detecting local services...")
+        detected_api_base, detected_model = asyncio.run(detect_local_service_and_model())
+        
+        if detected_api_base and detected_model:
+            if not api_base:
+                api_base = detected_api_base
+            if not model:
+                model = detected_model
+        else:
+            # Fall back to NVIDIA NGC
+            logger.warning("⚠️  No local VLM service found (Ollama, vLLM, SGLang)")
+            logger.info("📡 Falling back to NVIDIA API Catalog")
+            logger.info("   You'll need an API key from: https://build.nvidia.com")
+            if not api_base:
+                api_base = "https://integrate.api.nvidia.com/v1"
+            if not model:
+                model = "meta/llama-3.2-11b-vision-instruct"
+            if api_key == "EMPTY":
+                logger.warning("⚠️  API key required for NVIDIA API Catalog")
+                logger.warning("   Set with: --api-key YOUR_API_KEY")
+                logger.warning("   Or use WebUI to configure API settings after starting")
+
     # Initialize VLM service
     global vlm_service
     vlm_service = VLMService(
-        model=args.model,
-        api_base=args.api_base,
-        api_key=args.api_key,
+        model=model,
+        api_base=api_base,
+        api_key=api_key,
         prompt=args.prompt
     )
+    
+    # Log initialization with better formatting
+    service_name = "Local" if "localhost" in api_base or "127.0.0.1" in api_base else "Cloud"
     logger.info(f"Initialized VLM service:")
-    logger.info(f"  Model: {args.model}")
-    logger.info(f"  API Base: {args.api_base}")
+    logger.info(f"  Model: {model}")
+    logger.info(f"  API: {api_base} ({service_name})")
     logger.info(f"  Prompt: {args.prompt}")
 
     # Update frame processing rate in VideoProcessorTrack if needed
