@@ -11,6 +11,10 @@ Real-time vision AI interaction through your webcam. Stream video to a Vision La
 - 🎨 **Modern web UI** - Clean, responsive interface
 - 🔌 **Loosely coupled** - Compatible with vLLM, SGLang, Ollama, and more
 
+## Screenshot
+
+![](https://github.com/user-attachments/assets/0655f5d1-3912-49fb-b1b3-c1107c1ced5b)
+
 ## Architecture
 
 1. **Uplink**: Webcam video → WebRTC → Server
@@ -315,8 +319,8 @@ live-vlm-webui/
 
 ### Camera not accessible
 
-**Issue:** Browser won't allow camera access  
-**Solution:** 
+**Issue:** Browser won't allow camera access
+**Solution:**
 - ✅ Make sure you're using **HTTPS** (not HTTP)
 - ✅ Generate SSL certificates: `./generate_cert.sh`
 - ✅ Start server with SSL: `./start_server.sh` or add `--ssl-cert cert.pem --ssl-key key.pem`
@@ -328,7 +332,7 @@ live-vlm-webui/
 
 ### SSL Certificate Warning
 
-**Issue:** Browser shows "Your connection is not private" warning  
+**Issue:** Browser shows "Your connection is not private" warning
 **Solution:** This is normal for self-signed certificates!
 1. Click **"Advanced"** or **"Show Details"**
 2. Click **"Proceed to localhost (unsafe)"** or **"Accept the Risk and Continue"**
