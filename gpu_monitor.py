@@ -1,9 +1,10 @@
 """
 GPU Monitoring Module
-Supports multiple platforms: NVIDIA (NVML), Jetson Orin (tegrastats), Apple Silicon, AMD
+Supports multiple platforms: NVIDIA (NVML), Jetson Thor, Jetson Orin (tegrastats), Apple Silicon, AMD
 """
 import asyncio
 import logging
+import os
 import platform
 import psutil
 import socket
@@ -163,6 +164,8 @@ class NVMLMonitor(GPUMonitor):
         self.device_index = device_index
         self.handle = None
         self.available = False
+        self.error_logged = False  # Track if we've already logged an error
+        self.consecutive_errors = 0  # Count consecutive errors
 
         try:
             import pynvml
@@ -173,9 +176,14 @@ class NVMLMonitor(GPUMonitor):
                 self.device_name = self.device_name.decode('utf-8')
             self.available = True
             logger.info(f"NVML initialized for GPU: {self.device_name}")
+
+            # Check if this is Jetson Thor (which may have limited NVML support)
+            if "Thor" in self.device_name:
+                logger.warning(f"Detected {self.device_name} - NVML support may be limited")
         except Exception as e:
             logger.warning(f"NVML not available: {e}")
             self.available = False
+            self.error_logged = True
 
     def get_stats(self) -> Dict:
         """Get current GPU stats using NVML"""
@@ -229,15 +237,30 @@ class NVMLMonitor(GPUMonitor):
             return stats
 
         except Exception as e:
-            logger.error(f"Error getting NVML stats: {e}")
+            self.consecutive_errors += 1
+
+            # Only log error once, or every 60 seconds (60 calls at 1Hz)
+            if not self.error_logged:
+                logger.error(f"Error getting NVML stats: {e}")
+                logger.warning(f"GPU monitoring disabled - falling back to CPU/RAM only")
+                self.error_logged = True
+                self.available = False  # Don't try again
+            elif self.consecutive_errors % 60 == 0:
+                logger.warning(f"NVML still unavailable ({self.consecutive_errors} consecutive errors)")
+
             return self._get_fallback_stats()
 
     def _get_fallback_stats(self) -> Dict:
         """Fallback stats when GPU not available"""
         system_stats = self.get_cpu_ram_stats()
+
+        # Use GPU name if we got it during init, otherwise show unavailable
+        gpu_name = getattr(self, 'device_name', 'N/A')
+        platform_name = f"NVIDIA {gpu_name} (monitoring unavailable)" if gpu_name != "N/A" else "NVIDIA (NVML unavailable)"
+
         return {
-            "platform": "NVIDIA (NVML unavailable)",
-            "gpu_name": "N/A",
+            "platform": platform_name,
+            "gpu_name": gpu_name,
             "gpu_percent": 0,
             "vram_used_gb": 0,
             "vram_total_gb": 0,
@@ -256,6 +279,104 @@ class NVMLMonitor(GPUMonitor):
                 logger.info("NVML shutdown complete")
             except Exception as e:
                 logger.error(f"Error during NVML cleanup: {e}")
+
+
+class JetsonThorMonitor(GPUMonitor):
+    """Jetson Thor GPU monitoring using nvhost_podgov and tegrastats"""
+
+    def __init__(self, history_size: int = 60):
+        super().__init__(history_size)
+        self.gpu_name = "NVIDIA Thor"
+        self.available = False
+
+        # Thor-specific paths (JetPack 7 / L4T r38.2)
+        self.gpu_base_path = "/sys/devices/platform/bus@0/d0b0000000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0"
+        self.gpc_load_target = f"{self.gpu_base_path}/gpu-gpc-0/devfreq/gpu-gpc-0/nvhost_podgov/load_target"
+        self.gpc_load_max = f"{self.gpu_base_path}/gpu-gpc-0/devfreq/gpu-gpc-0/nvhost_podgov/load_max"
+        self.nvd_load_target = f"{self.gpu_base_path}/gpu-nvd-0/devfreq/gpu-nvd-0/nvhost_podgov/load_target"
+        self.nvd_load_max = f"{self.gpu_base_path}/gpu-nvd-0/devfreq/gpu-nvd-0/nvhost_podgov/load_max"
+
+        # Check if monitoring is available
+        try:
+            with open(self.gpc_load_target, 'r') as f:
+                f.read()
+            self.available = True
+            logger.info(f"Jetson Thor monitoring initialized - using nvhost_podgov")
+        except (FileNotFoundError, PermissionError) as e:
+            logger.warning(f"Jetson Thor nvhost_podgov not accessible: {e}")
+            self.available = False
+
+    def get_stats(self) -> Dict:
+        """Get current GPU stats for Jetson Thor"""
+        system_stats = self.get_cpu_ram_stats()
+
+        if not self.available:
+            return {
+                "platform": "Jetson Thor (monitoring unavailable)",
+                "gpu_name": self.gpu_name,
+                "gpu_percent": 0,
+                "vram_used_gb": 0,
+                "vram_total_gb": 0,
+                "vram_percent": 0,
+                **system_stats
+            }
+
+        try:
+            # Read GPC (Graphics Processing Cluster) load
+            with open(self.gpc_load_target, 'r') as f:
+                gpc_load = int(f.read().strip())
+            with open(self.gpc_load_max, 'r') as f:
+                gpc_max = int(f.read().strip())
+
+            # Calculate GPU utilization percentage
+            gpu_percent = (gpc_load / gpc_max * 100) if gpc_max > 0 else 0
+
+            # Try to read NVD (NVIDIA Display) load as well
+            try:
+                with open(self.nvd_load_target, 'r') as f:
+                    nvd_load = int(f.read().strip())
+                with open(self.nvd_load_max, 'r') as f:
+                    nvd_max = int(f.read().strip())
+                nvd_percent = (nvd_load / nvd_max * 100) if nvd_max > 0 else 0
+
+                # Use the maximum of GPC and NVD as overall GPU utilization
+                gpu_percent = max(gpu_percent, nvd_percent)
+            except:
+                pass  # NVD not critical, use GPC only
+
+            stats = {
+                "platform": "Jetson Thor (nvhost_podgov)",
+                "gpu_name": self.gpu_name,
+                "gpu_percent": gpu_percent,
+                "vram_used_gb": 0,  # Not available via this method
+                "vram_total_gb": 0,
+                "vram_percent": 0,
+                "temp_c": None,  # Could parse from tegrastats if needed
+                "power_w": None,
+                **system_stats
+            }
+
+            # Update history
+            self.update_history(stats)
+
+            return stats
+
+        except Exception as e:
+            logger.error(f"Error reading Thor GPU stats: {e}")
+            self.available = False  # Disable further attempts
+            return {
+                "platform": "Jetson Thor (error)",
+                "gpu_name": self.gpu_name,
+                "gpu_percent": 0,
+                "vram_used_gb": 0,
+                "vram_total_gb": 0,
+                "vram_percent": 0,
+                **system_stats
+            }
+
+    def cleanup(self):
+        """Cleanup resources"""
+        pass
 
 
 class JetsonOrinMonitor(GPUMonitor):
@@ -290,25 +411,49 @@ def create_monitor(platform: Optional[str] = None) -> GPUMonitor:
     Factory function to create appropriate GPU monitor
 
     Args:
-        platform: Force specific platform ('nvidia', 'jetson_orin', etc.)
+        platform: Force specific platform ('nvidia', 'jetson_orin', 'jetson_thor', etc.)
                  If None, auto-detect
 
     Returns:
         Appropriate GPUMonitor instance
     """
+    # Force specific platform if requested
+    if platform == "jetson_thor":
+        return JetsonThorMonitor()
+    if platform == "jetson_orin":
+        return JetsonOrinMonitor()
+    
+    # Auto-detect Jetson Thor by checking for Thor-specific paths
+    if platform is None:
+        thor_gpc_path = "/sys/devices/platform/bus@0/d0b0000000.pcie/pci0000:00/0000:00:00.0/0000:01:00.0/gpu-gpc-0/devfreq/gpu-gpc-0/nvhost_podgov/load_target"
+        try:
+            if os.path.exists(thor_gpc_path):
+                logger.info("Auto-detected Jetson Thor (nvhost_podgov paths found)")
+                return JetsonThorMonitor()
+        except:
+            pass
+    
+    # Try NVML (works for Desktop, DGX, some Jetsons)
     if platform == "nvidia" or platform is None:
-        # Try NVML first (works for Desktop, DGX, Jetson Thor)
         try:
             import pynvml
             pynvml.nvmlInit()
+            # Check if it's Thor by GPU name
+            handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+            gpu_name = pynvml.nvmlDeviceGetName(handle)
+            if isinstance(gpu_name, bytes):
+                gpu_name = gpu_name.decode('utf-8')
             pynvml.nvmlShutdown()
+            
+            # If Thor detected, use JetsonThorMonitor for better stats
+            if "Thor" in gpu_name:
+                logger.info(f"Detected {gpu_name} - using JetsonThorMonitor for better stats")
+                return JetsonThorMonitor()
+            
             logger.info("Auto-detected NVIDIA GPU (NVML available)")
             return NVMLMonitor()
         except:
             pass
-
-    if platform == "jetson_orin":
-        return JetsonOrinMonitor()
 
     # Fallback to NVML (will show unavailable)
     logger.warning("No GPU detected, using fallback monitor")
