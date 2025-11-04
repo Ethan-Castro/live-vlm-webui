@@ -8,7 +8,7 @@ Stream your webcam to any VLM and get live AI-powered analysis - perfect for tes
 
 🌐 **Universal Compatibility** - Works with **any VLM served via OpenAI-compatible API** using base64-encoded images. Deploy on:
 - 🟢 **NVIDIA Jetson** (Orin, AGX Xavier)
-- 🔵 **NVIDIA DGX** systems
+- 🔵 **NVIDIA DGX Spark** systems
 - 🖥️ **Desktop/Workstation** (Linux, potentially Mac)
 - ☁️ **Cloud APIs** (OpenAI, Anthropic, etc.)
 
@@ -27,7 +27,7 @@ Stream your webcam to any VLM and get live AI-powered analysis - perfect for tes
 - [ ] Model selection dropdown (auto-detect available models from API)
 - [ ] Separate video and text overlay (independent HTML elements)
 - [ ] Live GPU utilization stats (memory, load)
-- [ ] Inference latency metrics (ms per frame)
+- [ ] Inference latency metrics (ms to process a frame)
 - [ ] Multi-platform GPU monitoring (NVIDIA, Apple Silicon, AMD)
 - [ ] Benchmark mode for performance comparison across hardware
 
@@ -130,7 +130,7 @@ This will automatically start the server with SSL enabled using Ollama's `llama3
 
 3. **Open your browser** and navigate to:
 ```
-https://localhost:8080
+https://<IP_ADDRESS>:8080
 ```
 
 4. **Accept the security warning** (click "Advanced" → "Proceed")
@@ -449,7 +449,7 @@ Contributions welcome! Areas for improvement:
 
 - Built with [aiortc](https://github.com/aiortc/aiortc) - Python WebRTC implementation
 - Compatible with [vLLM](https://github.com/vllm-project/vllm), [SGLang](https://github.com/sgl-project/sglang), and [Ollama](https://ollama.ai/)
-- Inspired by the growing ecosystem of open-source vision language models
+- Inspired by the growing ecosystem of open-source vision language models, including [NanoVLM](https://dusty-nv.github.io/NanoLLM/).
 
 ## Citation
 
@@ -459,6 +459,6 @@ If you use this in your research or project, please cite:
 @software{live_vlm_webui,
   title = {Live VLM WebUI: Real-time Vision AI Interaction},
   year = {2025},
-  url = {https://github.com/yourusername/live-vlm-webui}
+  url = {https://github.com/nvidia-ai-iot/live-vlm-webui}
 }
 ```
