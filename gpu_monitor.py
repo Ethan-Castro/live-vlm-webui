@@ -1,6 +1,6 @@
 """
 GPU Monitoring Module
-Supports multiple platforms: NVIDIA (NVML), Jetson Thor, Jetson Orin (tegrastats), Apple Silicon, AMD
+Supports multiple platforms: NVIDIA (NVML), Jetson Thor (jtop), Jetson Orin (jtop), Apple Silicon, AMD
 """
 import asyncio
 import logging
@@ -492,20 +492,119 @@ class JetsonThorMonitor(GPUMonitor):
 
 
 class JetsonOrinMonitor(GPUMonitor):
-    """Jetson Orin GPU monitoring using tegrastats or /proc"""
+    """Jetson Orin GPU monitoring using jtop (jetson_stats)"""
 
     def __init__(self, history_size: int = 60):
         super().__init__(history_size)
-        # TODO: Implement Jetson Orin monitoring
-        logger.info("Jetson Orin monitoring not yet implemented")
+        self.gpu_name = "Jetson Orin"
+        self.available = False
+        self.use_jtop = False
+        self.jtop_instance = None
+
+        # Try jtop (best support for Orin - GPU, VRAM, temp, power)
+        try:
+            from jtop import jtop
+            self.jtop_instance = jtop()
+            self.jtop_instance.start()
+            self.use_jtop = True
+            self.available = True
+            logger.info(f"Jetson Orin monitoring initialized - using jtop (jetson_stats)")
+        except ImportError:
+            logger.warning("jtop (jetson_stats) not installed - install with: sudo pip3 install jetson-stats")
+        except Exception as e:
+            logger.warning(f"jtop initialization failed: {e}")
 
     def get_stats(self) -> Dict:
         """Get current GPU stats for Jetson Orin"""
-        # TODO: Parse tegrastats or /proc data
         system_stats = self.get_cpu_ram_stats()
+
+        if not self.available:
+            return {
+                "platform": "Jetson Orin (monitoring unavailable)",
+                "gpu_name": self.gpu_name,
+                "gpu_percent": 0,
+                "vram_used_gb": 0,
+                "vram_total_gb": 0,
+                "vram_percent": 0,
+                **system_stats
+            }
+
+        # Use jtop for stats
+        if self.use_jtop and self.jtop_instance:
+            try:
+                # Get stats from jtop
+                gpu_percent = self.jtop_instance.stats.get('GPU', 0)
+
+                # Get memory stats (jtop uses shared memory on Jetson)
+                memory = self.jtop_instance.memory
+                # Orin uses unified memory, RAM is shared with GPU
+                # jtop returns memory in KB, convert to GB (divide by 1024^2)
+                vram_used_gb = memory.get('RAM', {}).get('used', 0) / (1024 * 1024)
+                vram_total_gb = memory.get('RAM', {}).get('tot', 0) / (1024 * 1024)
+                vram_percent = (vram_used_gb / vram_total_gb * 100) if vram_total_gb > 0 else 0
+
+                # Temperature
+                temp_c = None
+                if hasattr(self.jtop_instance, 'temperature'):
+                    temps = self.jtop_instance.temperature
+                    # Try to get GPU temp
+                    temp_c = temps.get('GPU', temps.get('thermal', None))
+
+                # Power
+                power_w = None
+                if hasattr(self.jtop_instance, 'power'):
+                    power = self.jtop_instance.power
+                    # Sum all power rails if available
+                    if isinstance(power, dict):
+                        power_w = sum(p.get('power', 0) for p in power.values() if isinstance(p, dict)) / 1000  # mW to W
+
+                # Get board name (e.g., "Jetson AGX Orin Developer Kit")
+                board_name = None
+                if hasattr(self.jtop_instance, 'board'):
+                    board_info = self.jtop_instance.board
+                    if isinstance(board_info, dict):
+                        # Try hardware.Model first, then other fields
+                        if 'hardware' in board_info and isinstance(board_info['hardware'], dict):
+                            board_name = board_info['hardware'].get('Model') or board_info['hardware'].get('Module')
+                        if not board_name and 'info' in board_info and isinstance(board_info['info'], dict):
+                            board_name = board_info['info'].get('Machine') or board_info['info'].get('Model')
+                        if not board_name and 'platform' in board_info:
+                            platform = board_info['platform']
+                            if isinstance(platform, dict):
+                                board_name = platform.get('Machine')
+                            elif isinstance(platform, str):
+                                board_name = platform
+                        if board_name and not isinstance(board_name, str):
+                            logger.warning(f"Board name is not a string: {type(board_name)}, value: {board_name}")
+                            board_name = str(board_name) if board_name else None
+
+                return {
+                    "platform": "Jetson Orin (jtop)",
+                    "gpu_name": self.gpu_name,
+                    "gpu_percent": gpu_percent,
+                    "vram_used_gb": round(vram_used_gb, 2),
+                    "vram_total_gb": round(vram_total_gb, 2),
+                    "vram_percent": round(vram_percent, 1),
+                    "gpu_temp_c": temp_c,
+                    "gpu_power_w": power_w,
+                    "board_name": board_name,
+                    **system_stats
+                }
+            except Exception as e:
+                logger.error(f"Error getting jtop stats: {e}")
+                return {
+                    "platform": "Jetson Orin (jtop error)",
+                    "gpu_name": self.gpu_name,
+                    "gpu_percent": 0,
+                    "vram_used_gb": 0,
+                    "vram_total_gb": 0,
+                    "vram_percent": 0,
+                    **system_stats
+                }
+
         return {
-            "platform": "Jetson Orin (tegrastats)",
-            "gpu_name": "Jetson Orin",
+            "platform": "Jetson Orin (no stats)",
+            "gpu_name": self.gpu_name,
             "gpu_percent": 0,
             "vram_used_gb": 0,
             "vram_total_gb": 0,
@@ -515,7 +614,12 @@ class JetsonOrinMonitor(GPUMonitor):
 
     def cleanup(self):
         """Cleanup resources"""
-        pass
+        if self.use_jtop and self.jtop_instance:
+            try:
+                self.jtop_instance.close()
+                logger.info("jtop closed successfully")
+            except Exception as e:
+                logger.warning(f"Error closing jtop: {e}")
 
 
 def create_monitor(platform: Optional[str] = None) -> GPUMonitor:
@@ -557,10 +661,13 @@ def create_monitor(platform: Optional[str] = None) -> GPUMonitor:
                 gpu_name = gpu_name.decode('utf-8')
             pynvml.nvmlShutdown()
 
-            # If Thor detected, use JetsonThorMonitor for better stats
+            # If Jetson (Thor or Orin) detected, use jtop-based monitor for better stats
             if "Thor" in gpu_name:
-                logger.info(f"Detected {gpu_name} - using JetsonThorMonitor for better stats")
+                logger.info(f"Detected {gpu_name} - using JetsonThorMonitor for jtop-based stats")
                 return JetsonThorMonitor()
+            elif "Orin" in gpu_name or "nvgpu" in gpu_name:
+                logger.info(f"Detected {gpu_name} - using JetsonOrinMonitor for jtop-based stats")
+                return JetsonOrinMonitor()
 
             logger.info("Auto-detected NVIDIA GPU (NVML available)")
             return NVMLMonitor()

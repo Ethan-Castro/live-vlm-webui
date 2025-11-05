@@ -475,11 +475,12 @@ docker build -t live-vlm-webui:x86 .
 ```
 
 #### `Dockerfile.jetson` - For NVIDIA Jetson (Orin, Thor)
-**Base Image:** `nvcr.io/nvidia/l4t-base:36.4.0` (Linux for Tegra)
+**Base Image:** `nvcr.io/nvidia/l4t-base:r36.2.0` (Linux for Tegra, JetPack 6.0)
 - Optimized for Jetson platform with L4T drivers
 - Uses `jtop` (jetson-stats) or sysfs for GPU monitoring
-- Supports Jetson Orin and Jetson Thor
+- Supports Jetson Orin (JetPack 6.x)
 - Image size: ~1.2GB (compressed)
+- **Note**: Jetson Thor (JetPack 7.x / L4T r38.x) may require a separate Dockerfile when L4T r38.x images become available
 
 **Build:**
 ```bash

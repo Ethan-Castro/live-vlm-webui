@@ -1,7 +1,7 @@
 # Dockerfile for NVIDIA Jetson (Orin, Thor)
 # Based on L4T (Linux for Tegra) instead of CUDA runtime
 
-FROM nvcr.io/nvidia/l4t-base:36.4.0
+FROM nvcr.io/nvidia/l4t-base:r36.2.0
 
 # Install Python and system dependencies
 RUN apt-get update && apt-get install -y \
