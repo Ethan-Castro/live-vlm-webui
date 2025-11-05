@@ -10,8 +10,14 @@ from av import VideoFrame
 from aiortc import VideoStreamTrack
 from typing import Optional
 import logging
+import time
+import av
 
 from vlm_service import VLMService
+
+# Suppress swscaler warnings about lack of hardware acceleration
+# TODO: Implement hardware-accelerated color space conversion on Jetson
+av.logging.set_level(av.logging.ERROR)
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +29,8 @@ class VideoProcessorTrack(VideoStreamTrack):
     """
     # Class variable for frame processing interval (can be updated dynamically)
     process_every_n_frames = 30
+    # Max allowed latency before dropping frames (in seconds, 0 = disabled)
+    max_frame_latency = 0.0
 
     def __init__(self, track: VideoStreamTrack, vlm_service: VLMService, text_callback=None):
         super().__init__()
@@ -31,14 +39,35 @@ class VideoProcessorTrack(VideoStreamTrack):
         self.text_callback = text_callback  # Callback to send text updates
         self.last_frame: Optional[np.ndarray] = None
         self.frame_count = 0
+        self.dropped_frames = 0
+        self.last_frame_time = None
 
     async def recv(self):
         """
         Receive frame from input track, process it, and return with text overlay
         """
         try:
+            current_time = time.time()
+
             # Get frame from incoming track
             frame = await self.track.recv()
+
+            # Check for accumulated latency and drop old frames if needed (only if max_latency > 0)
+            max_latency = self.__class__.max_frame_latency
+            if max_latency > 0 and self.last_frame_time is not None:
+                latency = time.time() - self.last_frame_time
+
+                # If latency is high, drop frames until we get a fresh one
+                while latency > max_latency:
+                    self.dropped_frames += 1
+                    if self.dropped_frames % 10 == 0:
+                        logger.warning(f"High latency detected ({latency:.2f}s), dropped {self.dropped_frames} frames total")
+
+                    # Get next frame
+                    frame = await self.track.recv()
+                    latency = time.time() - current_time
+
+            self.last_frame_time = time.time()
 
             # Convert to numpy array
             img = frame.to_ndarray(format="bgr24")

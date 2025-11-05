@@ -943,6 +943,33 @@
             </div>
             <div class="settings-body">
                 <div class="settings-section">
+                    <div class="settings-section-title">Layout</div>
+
+                    <div class="settings-item">
+                        <div>
+                            <div class="settings-item-label">Main Content Order</div>
+                            <div class="settings-item-description">Choose which element appears at the top</div>
+                        </div>
+                        <select id="layoutOrder" class="settings-select">
+                            <option value="video-first">Camera → VLM Output Info</option>
+                            <option value="vlm-first" selected>VLM Output Info → Camera</option>
+                        </select>
+                    </div>
+
+                    <div class="settings-item">
+                        <div>
+                            <div class="settings-item-label">VLM Output on Camera View</div>
+                            <div class="settings-item-description">Show text overlay directly on video feed</div>
+                        </div>
+                        <select id="overlayPosition" class="settings-select">
+                            <option value="none">None</option>
+                            <option value="top">At the top</option>
+                            <option value="bottom">At the bottom</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="settings-section">
                     <div class="settings-section-title">Visual Effects</div>
 
                     <div class="settings-item">
@@ -980,29 +1007,14 @@
                 </div>
 
                 <div class="settings-section">
-                    <div class="settings-section-title">Layout</div>
+                    <div class="settings-section-title">WebRTC</div>
 
                     <div class="settings-item">
-                        <div>
-                            <div class="settings-item-label">Main Content Order</div>
-                            <div class="settings-item-description">Choose which element appears at the top</div>
+                        <div style="flex: 1; min-width: 0;">
+                            <div class="settings-item-label">Max Video Latency (seconds)</div>
+                            <div class="settings-item-description">Drop old frames if delay exceeds this (0 = no intervention)</div>
                         </div>
-                        <select id="layoutOrder" class="settings-select">
-                            <option value="video-first">Camera → VLM Output Info</option>
-                            <option value="vlm-first">VLM Output Info → Camera</option>
-                        </select>
-                    </div>
-
-                    <div class="settings-item">
-                        <div>
-                            <div class="settings-item-label">VLM Output on Camera View</div>
-                            <div class="settings-item-description">Show text overlay directly on video feed</div>
-                        </div>
-                        <select id="overlayPosition" class="settings-select">
-                            <option value="none">None</option>
-                            <option value="top">At the top</option>
-                            <option value="bottom">At the bottom</option>
-                        </select>
+                        <input type="number" id="maxLatency" value="0" min="0" max="10.0" step="0.1" style="width: 80px; padding: 6px 8px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 14px;">
                     </div>
                 </div>
             </div>
@@ -1277,6 +1289,7 @@
         const modelSelect = document.getElementById('modelSelect');
         const refreshModelsBtn = document.getElementById('refreshModelsBtn');
         const processEvery = document.getElementById('processEvery');
+        const maxLatency = document.getElementById('maxLatency');
         const mirrorBtn = document.getElementById('mirrorBtn');
 
         let peerConnection = null;
@@ -1395,7 +1408,7 @@
             glow: localStorage.getItem('glow') !== 'false',
             fade: localStorage.getItem('fade') !== 'false',
             overlayPosition: localStorage.getItem('overlayPosition') || 'none',
-            layoutOrder: localStorage.getItem('layoutOrder') || 'video-first'
+            layoutOrder: localStorage.getItem('layoutOrder') || 'vlm-first'
         };
 
         // Load saved settings
@@ -1428,10 +1441,10 @@
             const resultCard = document.querySelector('.result-card');
 
             if (order === 'vlm-first') {
-                // VLM Output Info at top, Camera below
+                // VLM Output Info at top, Camera below (default)
                 mainContent.insertBefore(resultCard, videoCard);
             } else {
-                // Camera at top, VLM Output Info below (default)
+                // Camera at top, VLM Output Info below
                 mainContent.insertBefore(videoCard, resultCard);
             }
         }
@@ -1802,6 +1815,18 @@
                 websocket.send(JSON.stringify({
                     type: 'update_processing',
                     process_every: interval
+                }));
+            }
+        });
+
+        // Auto-apply max latency on change
+        maxLatency.addEventListener('change', () => {
+            const latency = parseFloat(maxLatency.value) || 1.0;
+
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                websocket.send(JSON.stringify({
+                    type: 'update_max_latency',
+                    max_latency: latency
                 }));
             }
         });

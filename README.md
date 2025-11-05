@@ -53,6 +53,7 @@ Stream your webcam to any VLM and get live AI-powered analysis - perfect for tes
 - [ ] Recording functionality (save analysis sessions)
 - [ ] Export results (JSON, CSV)
 - [ ] Mobile app support
+- [ ] **Hardware-accelerated video processing on Jetson** - Use NVENC/NVDEC for color space conversion instead of CPU-based swscaler (current implementation uses software conversion which is not optimal for Jetson platforms)
 
 ## Screenshot
 

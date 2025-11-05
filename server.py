@@ -338,6 +338,28 @@ async def websocket_handler(request):
                                 logger.warning(f"Processing interval out of range (1-3600): {process_every}")
                         except ValueError:
                             logger.error(f"Invalid processing interval: {process_every}")
+
+                    elif data.get('type') == 'update_max_latency':
+                        max_latency = data.get('max_latency', 0.0)
+                        try:
+                            max_latency = float(max_latency)
+                            if 0 <= max_latency <= 10.0:
+                                from video_processor import VideoProcessorTrack
+                                old_value = VideoProcessorTrack.max_frame_latency
+                                VideoProcessorTrack.max_frame_latency = max_latency
+                                status = "disabled" if max_latency == 0 else f"{max_latency:.1f}s"
+                                old_status = "disabled" if old_value == 0 else f"{old_value:.1f}s"
+                                logger.info(f"Max frame latency updated: {old_status} → {status}")
+
+                                # Confirm to client
+                                await ws.send_json({
+                                    "type": "max_latency_updated",
+                                    "max_latency": max_latency
+                                })
+                            else:
+                                logger.warning(f"Max latency out of range (0-10.0): {max_latency}")
+                        except ValueError:
+                            logger.error(f"Invalid max latency value: {max_latency}")
                 except json.JSONDecodeError:
                     logger.error("Invalid JSON from client")
                 except Exception as e:
