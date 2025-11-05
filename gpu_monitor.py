@@ -344,7 +344,7 @@ class JetsonThorMonitor(GPUMonitor):
             try:
                 # Get stats from jtop
                 gpu_percent = self.jtop_instance.stats.get('GPU', 0)
-                
+
                 # Get memory stats (jtop uses shared memory on Jetson)
                 memory = self.jtop_instance.memory
                 # Thor uses unified memory, RAM is shared with GPU
@@ -352,14 +352,14 @@ class JetsonThorMonitor(GPUMonitor):
                 vram_used_gb = memory.get('RAM', {}).get('used', 0) / (1024 * 1024)
                 vram_total_gb = memory.get('RAM', {}).get('tot', 0) / (1024 * 1024)
                 vram_percent = (vram_used_gb / vram_total_gb * 100) if vram_total_gb > 0 else 0
-                
+
                 # Temperature
                 temp_c = None
                 if hasattr(self.jtop_instance, 'temperature'):
                     temps = self.jtop_instance.temperature
                     # Try to get GPU temp
                     temp_c = temps.get('GPU', temps.get('thermal', None))
-                
+
                 # Power
                 power_w = None
                 if hasattr(self.jtop_instance, 'power'):
@@ -367,7 +367,7 @@ class JetsonThorMonitor(GPUMonitor):
                     # Sum all power rails if available
                     if isinstance(power, dict):
                         power_w = sum(p.get('power', 0) for p in power.values() if isinstance(p, dict)) / 1000  # mW to W
-                
+
                 # Get board name (e.g., "Jetson AGX Thor Developer Kit")
                 board_name = None
                 if hasattr(self.jtop_instance, 'board'):
@@ -375,7 +375,7 @@ class JetsonThorMonitor(GPUMonitor):
                     if isinstance(board_info, dict):
                         # Try different keys that might contain the board name
                         board_name = board_info.get('platform', board_info.get('hardware', None))
-                
+
                 stats = {
                     "platform": "Jetson Thor (jtop)",
                     "gpu_name": self.gpu_name,

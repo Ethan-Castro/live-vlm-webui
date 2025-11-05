@@ -265,7 +265,7 @@ async def websocket_handler(request):
             "text": "Connected to server",
             "status": "Ready"
         })
-        
+
         # Send current server configuration
         if vlm_service:
             await ws.send_json({
@@ -301,18 +301,22 @@ async def websocket_handler(request):
                         api_key = data.get('api_key', '').strip()
 
                         if new_model and vlm_service:
+                            # Update model
                             vlm_service.model = new_model
 
                             # Update API settings if provided
-                            if api_base or api_key is not None:
-                                vlm_service.update_api_settings(api_base, api_key)
-
-                            logger.info(f"Model updated: {new_model}")
+                            # User may have switched to different service (Ollama ↔ vLLM)
+                            if api_base:
+                                vlm_service.update_api_settings(api_base, api_key if api_key else None)
+                                logger.info(f"Model updated: {new_model}, API: {api_base}")
+                            else:
+                                logger.info(f"Model updated: {new_model}")
 
                             # Confirm to client
                             await ws.send_json({
                                 "type": "model_updated",
-                                "model": new_model
+                                "model": new_model,
+                                "api_base": vlm_service.api_base
                             })
 
                     elif data.get('type') == 'update_processing':
@@ -416,8 +420,8 @@ async def gpu_monitor_loop():
             # Broadcast to all connected clients
             broadcast_gpu_stats(stats)
 
-            # Update every 1 second
-            await asyncio.sleep(1.0)
+            # Update every 0.25 seconds for detailed GPU monitoring
+            await asyncio.sleep(0.25)
     except asyncio.CancelledError:
         logger.info("GPU monitoring loop cancelled")
     except Exception as e:

@@ -120,6 +120,201 @@
             background: var(--card-hover);
         }
 
+        .settings-btn {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+        }
+
+        .settings-btn:hover {
+            background: var(--card-hover);
+        }
+
+        /* Settings Modal */
+        .settings-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .settings-modal.show {
+            display: flex;
+        }
+
+        .settings-dialog {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .settings-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .settings-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .settings-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .settings-close:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .settings-body {
+            padding: 24px;
+        }
+
+        .settings-section {
+            margin-bottom: 24px;
+        }
+
+        .settings-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .settings-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+
+        .settings-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+            gap: 16px;
+        }
+
+        .settings-item:last-child {
+            border-bottom: none;
+        }
+
+        .settings-item-label {
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .settings-item > div:first-child {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .settings-item-description {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            width: 48px;
+            height: 26px;
+            flex-shrink: 0;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            transition: 0.3s;
+            border-radius: 26px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: var(--text-secondary);
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(22px);
+            background-color: white;
+        }
+
+        /* Settings Dropdown */
+        .settings-select {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            width: 180px;
+            flex-shrink: 0;
+        }
+
+        .settings-select:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
         /* Main Layout */
         .container {
             display: flex;
@@ -405,6 +600,35 @@
             transition: transform 0.3s ease;
         }
 
+        /* Video Overlay Text */
+        .video-overlay {
+            position: absolute;
+            left: 0;
+            right: 0;
+            padding: 16px 20px;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.4));
+            color: white;
+            font-size: 16px;
+            line-height: 1.5;
+            pointer-events: none;
+            display: none;
+            z-index: 10;
+        }
+
+        .video-overlay.top {
+            top: 0;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.4));
+        }
+
+        .video-overlay.bottom {
+            bottom: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.4));
+        }
+
+        .video-overlay.show {
+            display: block;
+        }
+
         video.mirrored {
             transform: scaleX(-1);
         }
@@ -500,12 +724,12 @@
             color: var(--text-primary);
             margin-top: 16px;
             margin-bottom: 12px;
-            margin-left: 40px;
-            padding: 12px 16px;
-            background: var(--accent-color);
-            color: white;
+            margin-left: auto;
+            margin-right: 0;
+            padding: 6px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
             border-radius: 16px 16px 4px 16px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             max-width: 85%;
             word-wrap: break-word;
         }
@@ -514,20 +738,56 @@
             font-size: 15px;
             line-height: 1.6;
             color: var(--text-primary);
-            transition: opacity 3s ease;
-            min-height: 60px;
+            transition: opacity 3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+            min-height: 120px;
             margin-top: 12px;
-            margin-right: 40px;
+            margin-left: 0;
+            margin-right: auto;
             padding: 14px 18px;
-            background: var(--bg-tertiary);
+            background: linear-gradient(135deg, rgba(118, 185, 71, 0.15) 0%, rgba(147, 112, 219, 0.12) 100%);
+            border: 1px solid rgba(118, 185, 71, 0.3);
             border-radius: 16px 16px 16px 4px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
             max-width: 90%;
             word-wrap: break-word;
         }
 
         .result-text.fade {
             opacity: 0.4;
+        }
+
+        .result-text.new-message {
+            animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .result-text.new-message.with-glow {
+            animation: popInWithGlow 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0.95);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes popInWithGlow {
+            0% {
+                transform: scale(0.95);
+                opacity: 0.8;
+                box-shadow: 0 0 0 0 rgba(118, 185, 71, 0.4);
+            }
+            50% {
+                box-shadow: 0 0 20px 4px rgba(118, 185, 71, 0.6);
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(118, 185, 71, 0);
+            }
         }
 
         /* VLM Metrics */
@@ -666,10 +926,86 @@
         </div>
         <div class="header-right">
             <span class="status-badge disconnected" id="connectionStatus">Disconnected</span>
+            <button class="settings-btn" id="settingsBtn" title="Settings">⚙️</button>
             <button class="theme-toggle" id="themeToggle">
                 <span id="themeIcon">🌙</span>
                 <span id="themeText">Dark</span>
             </button>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="settings-modal" id="settingsModal">
+        <div class="settings-dialog">
+            <div class="settings-header">
+                <div class="settings-title">⚙️ Settings</div>
+                <button class="settings-close" id="settingsClose">×</button>
+            </div>
+            <div class="settings-body">
+                <div class="settings-section">
+                    <div class="settings-section-title">Visual Effects</div>
+
+                    <div class="settings-item">
+                        <div>
+                            <div class="settings-item-label">Pop-in Animation</div>
+                            <div class="settings-item-description">Scale animation when new VLM response arrives</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="popInToggle" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="settings-item">
+                        <div>
+                            <div class="settings-item-label">Green Glow Effect</div>
+                            <div class="settings-item-description">Border glow on new VLM response</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="glowToggle" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="settings-item">
+                        <div>
+                            <div class="settings-item-label">Fade Effect</div>
+                            <div class="settings-item-description">Gradually fade response after 2 seconds</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="fadeToggle" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="settings-section-title">Layout</div>
+
+                    <div class="settings-item">
+                        <div>
+                            <div class="settings-item-label">Main Content Order</div>
+                            <div class="settings-item-description">Choose which element appears at the top</div>
+                        </div>
+                        <select id="layoutOrder" class="settings-select">
+                            <option value="video-first">Camera → VLM Output Info</option>
+                            <option value="vlm-first">VLM Output Info → Camera</option>
+                        </select>
+                    </div>
+
+                    <div class="settings-item">
+                        <div>
+                            <div class="settings-item-label">VLM Output on Camera View</div>
+                            <div class="settings-item-description">Show text overlay directly on video feed</div>
+                        </div>
+                        <select id="overlayPosition" class="settings-select">
+                            <option value="none">None</option>
+                            <option value="top">At the top</option>
+                            <option value="bottom">At the bottom</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -680,7 +1016,7 @@
             <div class="panel">
                 <div class="panel-header" onclick="togglePanel('vlmConfig')">
                     <div class="panel-title">
-                        <span class="panel-icon">⚙️</span>
+                        <span class="panel-icon">🌐</span>
                         VLM API Configuration
                     </div>
                     <span class="panel-toggle" id="vlmConfigToggle">▼</span>
@@ -764,13 +1100,18 @@
                         </select>
                         <div class="input-hint">Select camera device to use for VLM analysis</div>
                     </div>
-                    <div class="form-group" style="margin-bottom: 0;">
+                    <div class="form-group">
                         <button class="btn btn-primary" id="startBtn" style="width: 100%; margin-bottom: 8px;">
                             ▶️ Open Camera and<br>Start VLM Analysis
                         </button>
                         <button class="btn btn-secondary" id="stopBtn" disabled style="width: 100%;">
                             ⏹️ Stop
                         </button>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label>Frame Processing Interval</label>
+                        <input type="number" id="processEvery" value="30" min="1" max="3600" step="1">
+                        <div class="input-hint">Process every Nth frame (Lower = more frequent)</div>
                     </div>
                 </div>
             </div>
@@ -808,33 +1149,9 @@
                         <input type="number" id="maxTokens" value="512" min="1" max="4096" step="1">
                         <div class="input-hint">Lower for short answers (Yes/No: ~10), higher for detailed descriptions</div>
                     </div>
-                    <button class="btn btn-secondary" id="updatePromptBtn">Apply Prompt Settings</button>
                 </div>
             </div>
 
-            <!-- Processing Config -->
-            <div class="panel">
-                <div class="panel-header" onclick="togglePanel('processingConfig')">
-                    <div class="panel-title">
-                        <span class="panel-icon">⚡</span>
-                        Processing Settings
-                    </div>
-                    <span class="panel-toggle" id="processingConfigToggle">▼</span>
-                </div>
-                <div class="panel-content" id="processingConfig">
-                    <div class="form-group">
-                        <label>Frame Processing Interval</label>
-                        <input type="number" id="processEvery" value="30" min="1" max="3600" step="1">
-                        <div class="input-hint">
-                            Process every Nth frame (Lower = more frequent analysis, higher GPU usage)
-                            <br>• 5 frames @ 30fps = ~6 FPS analysis (fast)
-                            <br>• 30 frames @ 30fps = ~1 FPS analysis (default)
-                            <br>• 300 frames @ 30fps = ~0.1 FPS analysis (10 sec interval)
-                        </div>
-                    </div>
-                    <button class="btn btn-secondary" id="updateProcessingBtn">Apply Settings</button>
-                </div>
-            </div>
         </div>
 
         <!-- Main Content -->
@@ -845,13 +1162,14 @@
                     <button class="video-control-btn" id="mirrorBtn" title="Mirror video">🔄 Mirror</button>
                 </div>
                 <video id="videoElement" autoplay playsinline muted></video>
+                <div class="video-overlay" id="videoOverlay"></div>
             </div>
 
             <!-- Generation Result -->
             <div class="result-card">
                 <div class="result-header">
                     <div class="result-header-left">
-                        <div class="result-title">🤖 VLM Output</div>
+                        <div class="result-title">🤖 VLM Output Info</div>
                         <div class="result-subtitle">
                             Model: <span id="modelName" style="font-weight: 600; color: var(--accent-color);">--</span>
                         </div>
@@ -874,8 +1192,8 @@
                     </div>
             </div>
 
-                <div class="result-prompt" id="currentPrompt">Waiting to start...</div>
-                <div class="result-text" id="resultText">Click "Start VLM Analysis" to begin</div>
+                <div class="result-prompt" id="currentPrompt"></div>
+                <div class="result-text" id="resultText"></div>
             </div>
 
             <!-- System Stats -->
@@ -956,11 +1274,9 @@
         const promptPreset = document.getElementById('promptPreset');
         const promptText = document.getElementById('promptText');
         const maxTokens = document.getElementById('maxTokens');
-        const updatePromptBtn = document.getElementById('updatePromptBtn');
         const modelSelect = document.getElementById('modelSelect');
         const refreshModelsBtn = document.getElementById('refreshModelsBtn');
         const processEvery = document.getElementById('processEvery');
-        const updateProcessingBtn = document.getElementById('updateProcessingBtn');
         const mirrorBtn = document.getElementById('mirrorBtn');
 
         let peerConnection = null;
@@ -1061,6 +1377,110 @@
             themeIcon.textContent = '☀️';
             themeText.textContent = 'Light';
         }
+
+        // Settings Modal
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsModal = document.getElementById('settingsModal');
+        const settingsClose = document.getElementById('settingsClose');
+        const popInToggle = document.getElementById('popInToggle');
+        const glowToggle = document.getElementById('glowToggle');
+        const fadeToggle = document.getElementById('fadeToggle');
+        const overlayPosition = document.getElementById('overlayPosition');
+        const layoutOrder = document.getElementById('layoutOrder');
+        const videoOverlay = document.getElementById('videoOverlay');
+
+        // Settings state
+        const settings = {
+            popIn: localStorage.getItem('popIn') !== 'false',
+            glow: localStorage.getItem('glow') !== 'false',
+            fade: localStorage.getItem('fade') !== 'false',
+            overlayPosition: localStorage.getItem('overlayPosition') || 'none',
+            layoutOrder: localStorage.getItem('layoutOrder') || 'video-first'
+        };
+
+        // Load saved settings
+        popInToggle.checked = settings.popIn;
+        glowToggle.checked = settings.glow;
+        fadeToggle.checked = settings.fade;
+        overlayPosition.value = settings.overlayPosition;
+        layoutOrder.value = settings.layoutOrder;
+
+        // Apply overlay position
+        function applyOverlayPosition(position) {
+            videoOverlay.classList.remove('show', 'top', 'bottom');
+            const resultText = document.getElementById('resultText');
+
+            if (position !== 'none') {
+                // Overlay enabled - show on video, hide response balloon (keep prompt visible)
+                videoOverlay.classList.add('show', position);
+                resultText.style.display = 'none';
+            } else {
+                // Overlay disabled - hide from video, show response balloon
+                resultText.style.display = 'block';
+            }
+        }
+        applyOverlayPosition(settings.overlayPosition);
+
+        // Apply layout order
+        function applyLayoutOrder(order) {
+            const mainContent = document.querySelector('.main-content');
+            const videoCard = document.querySelector('.video-card');
+            const resultCard = document.querySelector('.result-card');
+
+            if (order === 'vlm-first') {
+                // VLM Output Info at top, Camera below
+                mainContent.insertBefore(resultCard, videoCard);
+            } else {
+                // Camera at top, VLM Output Info below (default)
+                mainContent.insertBefore(videoCard, resultCard);
+            }
+        }
+        applyLayoutOrder(settings.layoutOrder);
+
+        // Open settings modal
+        settingsBtn.addEventListener('click', () => {
+            settingsModal.classList.add('show');
+        });
+
+        // Close settings modal
+        settingsClose.addEventListener('click', () => {
+            settingsModal.classList.remove('show');
+        });
+
+        // Close modal when clicking outside
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) {
+                settingsModal.classList.remove('show');
+            }
+        });
+
+        // Handle settings changes
+        popInToggle.addEventListener('change', (e) => {
+            settings.popIn = e.target.checked;
+            localStorage.setItem('popIn', settings.popIn);
+        });
+
+        glowToggle.addEventListener('change', (e) => {
+            settings.glow = e.target.checked;
+            localStorage.setItem('glow', settings.glow);
+        });
+
+        fadeToggle.addEventListener('change', (e) => {
+            settings.fade = e.target.checked;
+            localStorage.setItem('fade', settings.fade);
+        });
+
+        overlayPosition.addEventListener('change', (e) => {
+            settings.overlayPosition = e.target.value;
+            localStorage.setItem('overlayPosition', settings.overlayPosition);
+            applyOverlayPosition(settings.overlayPosition);
+        });
+
+        layoutOrder.addEventListener('change', (e) => {
+            settings.layoutOrder = e.target.value;
+            localStorage.setItem('layoutOrder', settings.layoutOrder);
+            applyLayoutOrder(settings.layoutOrder);
+        });
 
         // Panel Toggle
         function togglePanel(panelId) {
@@ -1221,21 +1641,13 @@
             }
         });
 
-        // Handle preset selection
-        promptPreset.addEventListener('change', (e) => {
-            if (e.target.value) {
-                promptText.value = e.target.value;
-            }
-        });
-
-        // Handle prompt update
-        updatePromptBtn.addEventListener('click', () => {
+        // Helper function to apply prompt settings
+        function applyPromptSettings() {
             const newPrompt = promptText.value.trim();
             const tokens = parseInt(maxTokens.value) || 512;
 
             if (!newPrompt) {
-                alert('Please enter a prompt');
-                return;
+                return; // Silently skip if empty
             }
 
             if (websocket && websocket.readyState === WebSocket.OPEN) {
@@ -1247,16 +1659,26 @@
 
                 // Update the displayed prompt (chat bubble style)
                 const promptPreview = newPrompt.length > 150 ? newPrompt.substring(0, 150) + '...' : newPrompt;
-                currentPrompt.textContent = `💬 ${promptPreview}`;
-                updateStatus('Prompt configured', 'connected');
-
-                updatePromptBtn.textContent = '✓ Applied';
-                setTimeout(() => {
-                    updatePromptBtn.textContent = 'Apply Prompt Settings';
-                }, 2000);
-            } else {
-                updateStatus('Waiting for connection...', 'disconnected');
+                currentPrompt.textContent = `Prompt: ${promptPreview}`;
             }
+        }
+
+        // Handle preset selection
+        promptPreset.addEventListener('change', (e) => {
+            if (e.target.value) {
+                promptText.value = e.target.value;
+                applyPromptSettings();
+            }
+        });
+
+        // Auto-apply prompt on blur (when user finishes editing)
+        promptText.addEventListener('blur', () => {
+            applyPromptSettings();
+        });
+
+        // Auto-apply when max tokens changes
+        maxTokens.addEventListener('change', () => {
+            applyPromptSettings();
         });
 
         refreshModelsBtn.addEventListener('click', fetchModels);
@@ -1372,8 +1794,8 @@
             mirrorBtn.classList.toggle('active');
         });
 
-        // Processing interval update
-        updateProcessingBtn.addEventListener('click', () => {
+        // Auto-apply processing interval on change
+        processEvery.addEventListener('change', () => {
             const interval = parseInt(processEvery.value) || 30;
 
             if (websocket && websocket.readyState === WebSocket.OPEN) {
@@ -1381,14 +1803,6 @@
                     type: 'update_processing',
                     process_every: interval
                 }));
-
-                updateStatus('Processing interval updated', 'connected');
-                updateProcessingBtn.textContent = '✓ Applied';
-                setTimeout(() => {
-                    updateProcessingBtn.textContent = 'Apply Settings';
-                }, 2000);
-            } else {
-                updateStatus('Waiting for connection...', 'disconnected');
             }
         });
 
@@ -1520,20 +1934,47 @@
                 const data = JSON.parse(event.data);
 
                 if (data.type === 'vlm_response') {
-                    if (data.text !== lastText && lastText !== '') {
+                    // Trigger animations for new messages based on settings
+                    if (data.text !== lastText) {
                         resultText.classList.remove('fade');
+                        resultText.classList.remove('new-message');
+
+                        // Apply pop-in animation if enabled
+                        if (settings.popIn) {
+                            // Force reflow to restart animation
+                            void resultText.offsetWidth;
+
+                            resultText.classList.add('new-message');
+
+                            // Add glow effect if enabled
+                            if (settings.glow) {
+                                resultText.classList.add('with-glow');
+                            }
+
+                            // Remove animation classes after it completes
+                            setTimeout(() => {
+                                resultText.classList.remove('new-message');
+                                resultText.classList.remove('with-glow');
+                            }, 400);
+                        }
 
                         if (fadeTimeout) {
                             clearTimeout(fadeTimeout);
                         }
 
-                        fadeTimeout = setTimeout(() => {
-                            resultText.classList.add('fade');
-                        }, 2000);
+                        // Start fade after 2 seconds if enabled
+                        if (settings.fade) {
+                            fadeTimeout = setTimeout(() => {
+                                resultText.classList.add('fade');
+                            }, 2000);
+                        }
                     }
 
                     resultText.textContent = data.text;
                     lastText = data.text;
+
+                    // Update video overlay (always, visibility is controlled by CSS)
+                    videoOverlay.textContent = data.text;
 
                     if (data.metrics) {
                         metricsInline.style.display = 'flex';
@@ -1544,7 +1985,8 @@
                 } else if (data.type === 'gpu_stats') {
                     updateGPUStats(data.stats);
                 } else if (data.type === 'status') {
-                    resultText.textContent = data.text;
+                    // Don't show status messages in result balloon (too flashy)
+                    // Status is already shown in the header
                 } else if (data.type === 'server_config') {
                     // Server sent its current configuration (model, api_base, prompt)
                     if (data.model) {
@@ -1696,8 +2138,9 @@
             isAnalysisRunning = false;
             updateStatus('Connected', 'connected');
 
-            resultText.textContent = 'Click "Start VLM Analysis" to begin';
+            resultText.textContent = '';
             resultText.classList.remove('fade');
+            videoOverlay.textContent = '';
             lastText = '';
         }
 
@@ -1715,7 +2158,7 @@
             const initialPrompt = promptText.value.trim();
             if (initialPrompt) {
                 const promptPreview = initialPrompt.length > 150 ? initialPrompt.substring(0, 150) + '...' : initialPrompt;
-                currentPrompt.textContent = `💬 ${promptPreview}`;
+                currentPrompt.textContent = `Prompt: ${promptPreview}`;
             }
         });
     </script>
