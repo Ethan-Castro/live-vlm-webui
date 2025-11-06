@@ -912,13 +912,45 @@
         ::-webkit-scrollbar-thumb:hover {
             background: var(--border-color);
         }
+
+        /* Lucide icon styling */
+        .lucide {
+            width: 1em;
+            height: 1em;
+            vertical-align: middle;
+        }
+
+        .logo .lucide {
+            width: 28px;
+            height: 28px;
+        }
+
+        .icon-btn .lucide,
+        .settings-btn .lucide,
+        .video-control-btn .lucide {
+            width: 16px;
+            height: 16px;
+        }
+
+        .panel-icon .lucide {
+            width: 18px;
+            height: 18px;
+        }
+
+        .result-title .lucide {
+            width: 20px;
+            height: 20px;
+            margin-right: 6px;
+        }
     </style>
 </head>
 <body>
     <!-- Header -->
     <div class="header">
         <div class="header-left">
-            <div class="logo">🎥</div>
+            <div class="logo">
+                <i data-lucide="video" style="color: var(--accent-color);"></i>
+            </div>
             <div class="title-section">
                 <h1>Live VLM WebUI</h1>
                 <div class="subtitle">Real-time Vision Language Model Benchmark/Evaluation Tool</div>
@@ -926,9 +958,13 @@
         </div>
         <div class="header-right">
             <span class="status-badge disconnected" id="connectionStatus">Disconnected</span>
-            <button class="settings-btn" id="settingsBtn" title="Settings">⚙️</button>
+            <button class="settings-btn" id="settingsBtn" title="Settings">
+                <i data-lucide="settings"></i>
+            </button>
             <button class="theme-toggle" id="themeToggle">
-                <span id="themeIcon">🌙</span>
+                <span id="themeIcon">
+                    <i data-lucide="moon"></i>
+                </span>
                 <span id="themeText">Dark</span>
             </button>
         </div>
@@ -938,7 +974,9 @@
     <div class="settings-modal" id="settingsModal">
         <div class="settings-dialog">
             <div class="settings-header">
-                <div class="settings-title">⚙️ Settings</div>
+                <div class="settings-title">
+                    <i data-lucide="settings"></i> Settings
+                </div>
                 <button class="settings-close" id="settingsClose">×</button>
             </div>
             <div class="settings-body">
@@ -1028,7 +1066,9 @@
             <div class="panel">
                 <div class="panel-header" onclick="togglePanel('vlmConfig')">
                     <div class="panel-title">
-                        <span class="panel-icon">🌐</span>
+                        <span class="panel-icon">
+                            <i data-lucide="globe"></i>
+                        </span>
                         VLM API Configuration
                     </div>
                     <span class="panel-toggle" id="vlmConfigToggle">▼</span>
@@ -1038,7 +1078,9 @@
                         <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 8px;">
                             <label style="margin-bottom: 0; flex: 1;">API Base URL</label>
                             <div style="position: relative;">
-                                <button class="icon-btn" id="apiPresetsBtn" title="Select preset API endpoint" style="font-size: 14px;">📋</button>
+                                <button class="icon-btn" id="apiPresetsBtn" title="Select preset API endpoint">
+                                    <i data-lucide="clipboard"></i>
+                                </button>
                                 <div id="apiPresetsMenu" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 280px; z-index: 9999;">
                                     <div style="padding: 8px 0;">
                                         <div class="api-preset-item" data-url="http://localhost:11434/v1">
@@ -1084,8 +1126,12 @@
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                             <label style="margin-bottom: 0;">Model Selection</label>
                             <div style="display: flex; gap: 6px;">
-                                <button class="icon-btn" id="refreshModelsBtn" title="Refresh available models">🔄</button>
-                                <button class="icon-btn" id="downloadModelBtn" title="Download new model (coming soon)" disabled style="opacity: 0.5;">➕</button>
+                                <button class="icon-btn" id="refreshModelsBtn" title="Refresh available models">
+                                    <i data-lucide="refresh-cw"></i>
+                                </button>
+                                <button class="icon-btn" id="downloadModelBtn" title="Download new model (coming soon)" disabled style="opacity: 0.5;">
+                                    <i data-lucide="plus"></i>
+                                </button>
                             </div>
                         </div>
                         <select id="modelSelect">
@@ -1099,7 +1145,9 @@
             <div class="panel">
                 <div class="panel-header" onclick="togglePanel('cameraConfig')">
                     <div class="panel-title">
-                        <span class="panel-icon">📹</span>
+                        <span class="panel-icon">
+                            <i data-lucide="video"></i>
+                        </span>
                         Camera and App Control
                     </div>
                     <span class="panel-toggle" id="cameraConfigToggle">▼</span>
@@ -1114,10 +1162,12 @@
                     </div>
                     <div class="form-group">
                         <button class="btn btn-primary" id="startBtn" style="width: 100%; margin-bottom: 8px;">
-                            ▶️ Open Camera and<br>Start VLM Analysis
+                            <i data-lucide="play" style="width: 14px; height: 14px; margin-right: 4px;"></i>
+                            Open Camera and<br>Start VLM Analysis
                         </button>
                         <button class="btn btn-secondary" id="stopBtn" disabled style="width: 100%;">
-                            ⏹️ Stop
+                            <i data-lucide="square" style="width: 14px; height: 14px; margin-right: 4px;"></i>
+                            Stop
                         </button>
                     </div>
                     <div class="form-group" style="margin-bottom: 0;">
@@ -1132,7 +1182,9 @@
             <div class="panel">
                 <div class="panel-header" onclick="togglePanel('promptEditor')">
                     <div class="panel-title">
-                        <span class="panel-icon">✍️</span>
+                        <span class="panel-icon">
+                            <i data-lucide="edit-3"></i>
+                        </span>
                         Prompt Editor
                     </div>
                     <span class="panel-toggle" id="promptEditorToggle">▼</span>
@@ -1171,7 +1223,9 @@
             <!-- Video Feed -->
             <div class="video-card">
                 <div class="video-controls">
-                    <button class="video-control-btn" id="mirrorBtn" title="Mirror video">🔄 Mirror</button>
+                    <button class="video-control-btn" id="mirrorBtn" title="Mirror video">
+                        <i data-lucide="flip-horizontal"></i> Mirror
+                    </button>
                 </div>
                 <video id="videoElement" autoplay playsinline muted></video>
                 <div class="video-overlay" id="videoOverlay"></div>
@@ -1181,7 +1235,9 @@
             <div class="result-card">
                 <div class="result-header">
                     <div class="result-header-left">
-                        <div class="result-title">🤖 VLM Output Info</div>
+                        <div class="result-title">
+                            <i data-lucide="bot"></i> VLM Output Info
+                        </div>
                         <div class="result-subtitle">
                             Model: <span id="modelName" style="font-weight: 600; color: var(--accent-color);">--</span>
                         </div>
@@ -1211,7 +1267,9 @@
             <!-- System Stats -->
             <div class="result-card" id="systemStatsCard">
                 <div class="result-header" style="display: flex; justify-content: space-between; align-items: center; gap: 20px;">
-                    <div class="result-title">📊 Local System Stats</div>
+                    <div class="result-title">
+                        <i data-lucide="activity"></i> Local System Stats
+                    </div>
                     <div style="font-size: 12px; color: var(--text-secondary); text-align: right; font-weight: 400; flex-shrink: 1; min-width: 0;">
                         <span id="systemInfoHeader">Loading...</span>
                     </div>
@@ -1377,16 +1435,18 @@
         themeToggle.addEventListener('click', () => {
             document.body.classList.toggle('light-theme');
             const isLight = document.body.classList.contains('light-theme');
-            themeIcon.textContent = isLight ? '☀️' : '🌙';
+            themeIcon.innerHTML = isLight ? '<i data-lucide="sun"></i>' : '<i data-lucide="moon"></i>';
             themeText.textContent = isLight ? 'Light' : 'Dark';
             localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            lucide.createIcons();
         });
 
         // Load saved theme
         if (localStorage.getItem('theme') === 'light') {
             document.body.classList.add('light-theme');
-            themeIcon.textContent = '☀️';
+            themeIcon.innerHTML = '<i data-lucide="sun"></i>';
             themeText.textContent = 'Light';
+            lucide.createIcons();
         }
 
         // Settings Modal
@@ -1937,7 +1997,7 @@
                 Object.values(canvases).forEach(canvas => {
                     const width = canvas.offsetWidth || canvas.parentElement.offsetWidth || 300;
                     const height = canvas.offsetHeight || 40;
-                    
+
                     // Only update if dimensions changed (avoid unnecessary canvas clears)
                     if (canvas.width !== width || canvas.height !== height) {
                         canvas.width = width;
@@ -2198,8 +2258,14 @@
                 const promptPreview = initialPrompt.length > 150 ? initialPrompt.substring(0, 150) + '...' : initialPrompt;
                 currentPrompt.textContent = `Prompt: ${promptPreview}`;
             }
+
+            // Initialize Lucide icons
+            lucide.createIcons();
         });
     </script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 </body>
 </html>
 
