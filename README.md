@@ -488,22 +488,36 @@ docker build -f Dockerfile.jetson -t live-vlm-webui:jetson-orin .
 docker build -f Dockerfile.jetson-orin -t live-vlm-webui:jetson-orin .
 ```
 
-#### `Dockerfile.jetson-thor` - For NVIDIA Jetson Thor
-**Base Image:** `nvcr.io/nvidia/l4t-base:r38.x.x` (L4T r38.x, JetPack 7.x - not yet available)
-- Optimized for Jetson Thor platform (AGX Thor Developer Kit)
-- Uses `jtop` (jetson-stats from GitHub) for latest Thor support
+#### `Dockerfile.jetson-thor` - For NVIDIA Jetson Thor ✅ READY
+**Base Image:** `nvcr.io/nvidia/cuda:13.0.0-runtime-ubuntu24.04` (Standard ARM64 CUDA container)
+- **✅ Jetson Thor is SBSA-compliant** - Uses standard NGC CUDA containers (no L4T-specific images needed!)
+- This is a major architectural change from previous Jetsons (Orin, Xavier)
+- Uses `jtop` (jetson-stats from GitHub) for latest Thor GPU monitoring support
 - Installs from GitHub: `git+https://github.com/rbonghi/jetson_stats.git`
-- **Status:** Template ready, waiting for L4T r38.x base image release
+- Ubuntu 24.04 base (aligned with JetPack 7.x)
+- Reference: [Jetson Thor CUDA Setup Guide](https://docs.nvidia.com/jetson/agx-thor-devkit/user-guide/latest/setup_cuda.html)
 
-**Build (when L4T r38.x is available):**
+**Build:**
 ```bash
 docker build -f Dockerfile.jetson-thor -t live-vlm-webui:jetson-thor .
 ```
 
+**Run:**
+```bash
+docker run -d \
+  --name live-vlm-webui \
+  --network host \
+  --gpus all \
+  --privileged \
+  -v /run/jtop.sock:/run/jtop.sock:ro \
+  live-vlm-webui:jetson-thor
+```
+
 **Why separate Dockerfiles?**
-- Jetson uses different GPU drivers (L4T) than desktop GPUs
-- Jetson monitoring requires `jtop` or sysfs access, not NVML
-- L4T base image is smaller and optimized for ARM64 Jetson
+- **Jetson Orin**: Requires L4T-specific base images (`l4t-base:r36.x`)
+- **Jetson Thor**: SBSA-compliant, uses standard CUDA containers (architectural upgrade!)
+- **Monitoring**: Both use `jtop` for GPU stats (NVML limited on Jetson)
+- **jetson-stats source**: Orin uses PyPI (stable), Thor uses GitHub (bleeding-edge support)
 
 **Without GPU access** (`--gpus all` or `--device nvidia.com/gpu=all`), the app still works but system stats show "N/A" for GPU info.
 

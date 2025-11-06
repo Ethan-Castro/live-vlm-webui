@@ -1,11 +1,11 @@
 # Dockerfile for NVIDIA Jetson Thor (AGX Thor Developer Kit)
-# Based on L4T r38.x (JetPack 7.x)
-# NOTE: L4T r38.x base images are not yet available on NGC as of Nov 2025
-# This Dockerfile will need to be updated when official images are released
+# Based on JetPack 7.x (L4T r38.2+)
+#
+# ✅ Jetson Thor is SBSA-compliant - uses standard ARM64 CUDA containers!
+# Unlike previous Jetsons (Orin, Xavier), Thor doesn't need L4T-specific base images.
+# See: https://docs.nvidia.com/jetson/agx-thor-devkit/user-guide/latest/setup_cuda.html
 
-# TODO: Update base image when L4T r38.x is available
-# Expected: FROM nvcr.io/nvidia/l4t-base:r38.x.x
-FROM nvcr.io/nvidia/l4t-base:r36.2.0
+FROM nvcr.io/nvidia/cuda:13.0.0-runtime-ubuntu24.04
 
 # Install Python and system dependencies
 RUN apt-get update && apt-get install -y \
