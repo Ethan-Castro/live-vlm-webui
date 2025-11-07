@@ -11,7 +11,7 @@ import socket
 import subprocess
 import aiohttp
 from aiohttp import web
-from aiortc import RTCPeerConnection, RTCSessionDescription, MediaStreamTrack
+from aiortc import RTCPeerConnection, RTCSessionDescription, MediaStreamTrack, RTCConfiguration, RTCIceServer
 from aiortc.contrib.media import MediaRelay
 
 from vlm_service import VLMService
@@ -458,8 +458,14 @@ async def offer(request):
     params = await request.json()
     offer_sdp = RTCSessionDescription(sdp=params["sdp"], type=params["type"])
 
-    # Create RTCPeerConnection
-    pc = RTCPeerConnection()
+    # Create RTCPeerConnection with STUN servers for Docker/NAT compatibility
+    config = RTCConfiguration(
+        iceServers=[
+            RTCIceServer(urls=["stun:stun.l.google.com:19302"]),
+            RTCIceServer(urls=["stun:stun1.l.google.com:19302"]),
+        ]
+    )
+    pc = RTCPeerConnection(configuration=config)
     pcs.add(pc)
 
     @pc.on("connectionstatechange")

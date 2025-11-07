@@ -74,7 +74,12 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Environment variable to help detection
 ENV DOCKER_ENV=mac
 
+# Set default VLM configuration for Mac (connecting to host Ollama)
+ENV VLM_API_BASE=http://host.docker.internal:11434/v1
+ENV VLM_MODEL=llama3.2-vision:11b
+
 # Run the server
 # Note: Will connect to Ollama running on host (use host.docker.internal)
-CMD ["python", "server.py", "--host", "0.0.0.0", "--port", "8090", "--ssl-cert", "cert.pem", "--ssl-key", "key.pem"]
+# Use shell form to expand environment variables
+CMD python server.py --host 0.0.0.0 --port 8090 --ssl-cert cert.pem --ssl-key key.pem --api-base ${VLM_API_BASE} --model ${VLM_MODEL}
 
