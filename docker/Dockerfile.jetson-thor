@@ -37,7 +37,7 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1 && \
 WORKDIR /app
 
 # Upgrade pip and build tools
-RUN pip install --no-cache-dir --break-system-packages --upgrade pip setuptools wheel
+RUN pip install --no-cache-dir --break-system-packages --ignore-installed --upgrade pip setuptools wheel
 
 # Copy package files first for better layer caching
 COPY pyproject.toml MANIFEST.in ./
