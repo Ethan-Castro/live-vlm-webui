@@ -118,27 +118,8 @@ fi
 CONTAINER_NAME="live-vlm-webui"
 
 # Set image name based on platform
-if [ "$PLATFORM" = "mac" ]; then
-    # Mac: Use local image (not from registry)
-    IMAGE_NAME="live-vlm-webui:${IMAGE_TAG}"
-    echo ""
-    echo -e "${YELLOW}ℹ️  Mac uses local Docker image${NC}"
-
-    # Check if image exists
-    if ! docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^${IMAGE_NAME}$"; then
-        echo -e "${RED}❌ Image '${IMAGE_NAME}' not found locally${NC}"
-        echo -e "${YELLOW}   Build it first with:${NC}"
-        echo -e "   ${GREEN}docker build -f Dockerfile.mac -t ${IMAGE_NAME} .${NC}"
-        echo -e "   ${YELLOW}Or use the test script:${NC}"
-        echo -e "   ${GREEN}./test_mac_docker.sh${NC}"
-        exit 1
-    else
-        echo -e "${GREEN}✅ Found local image: ${IMAGE_NAME}${NC}"
-    fi
-else
-    # Linux: Use registry image
-    IMAGE_NAME="ghcr.io/nvidia-ai-iot/live-vlm-webui:${IMAGE_TAG}"
-fi
+# All platforms now use registry images
+IMAGE_NAME="ghcr.io/nvidia-ai-iot/live-vlm-webui:${IMAGE_TAG}"
 
 # Check if container already exists
 if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
@@ -155,50 +136,57 @@ if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
     fi
 fi
 
-# Pull latest image (optional, skip for Mac)
-if [ "$PLATFORM" != "mac" ]; then
-    read -p "Pull latest image from registry? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo -e "${BLUE}📥 Pulling ${IMAGE_NAME}...${NC}"
-        docker pull ${IMAGE_NAME} || {
-            echo -e "${YELLOW}⚠️  Failed to pull from registry, will try local image${NC}"
-        }
+# Pull latest image from registry (optional)
+read -p "Pull latest image from registry? (y/N): " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo -e "${BLUE}📥 Pulling ${IMAGE_NAME}...${NC}"
+    docker pull ${IMAGE_NAME} || {
+        echo -e "${YELLOW}⚠️  Failed to pull from registry, will try local image${NC}"
+    }
+fi
+
+# Check if image exists (registry or local)
+if ! docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^${IMAGE_NAME}$"; then
+    # Try common local image names
+    LOCAL_IMAGE=""
+    if [ "$PLATFORM" = "mac" ]; then
+        # Check for Mac local builds
+        if docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^live-vlm-webui:latest-mac$"; then
+            LOCAL_IMAGE="live-vlm-webui:latest-mac"
+        fi
+    elif [ "$PLATFORM" = "arm64-sbsa" ]; then
+        # Check for DGX Spark specific tags
+        if docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^live-vlm-webui:dgx-spark$"; then
+            LOCAL_IMAGE="live-vlm-webui:dgx-spark"
+        elif docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^live-vlm-webui:arm64$"; then
+            LOCAL_IMAGE="live-vlm-webui:arm64"
+        fi
+    elif [ "$PLATFORM" = "x86" ]; then
+        if docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^live-vlm-webui:x86$"; then
+            LOCAL_IMAGE="live-vlm-webui:x86"
+        fi
     fi
 
-    # Check if image exists (registry or local)
-    if ! docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^${IMAGE_NAME}$"; then
-        # Try common local image names
-        LOCAL_IMAGE=""
-        if [ "$PLATFORM" = "arm64-sbsa" ]; then
-            # Check for DGX Spark specific tags
-            if docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^live-vlm-webui:dgx-spark$"; then
-                LOCAL_IMAGE="live-vlm-webui:dgx-spark"
-            elif docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^live-vlm-webui:arm64$"; then
-                LOCAL_IMAGE="live-vlm-webui:arm64"
-            fi
-        elif [ "$PLATFORM" = "x86" ]; then
-            if docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^live-vlm-webui:x86$"; then
-                LOCAL_IMAGE="live-vlm-webui:x86"
-            fi
-        fi
-
-        if [ -n "$LOCAL_IMAGE" ]; then
-            echo -e "${GREEN}✅ Found local image: ${LOCAL_IMAGE}${NC}"
-            IMAGE_NAME="${LOCAL_IMAGE}"
-        else
-            echo -e "${RED}❌ Image '${IMAGE_NAME}' not found${NC}"
-            echo -e "${YELLOW}   Build it first with:${NC}"
-            if [ "$PLATFORM" = "arm64-sbsa" ]; then
-                echo -e "   ${GREEN}docker build -t live-vlm-webui:dgx-spark .${NC}"
-            else
-                echo -e "   ${GREEN}docker build -t live-vlm-webui:x86 .${NC}"
-            fi
-            exit 1
-        fi
+    if [ -n "$LOCAL_IMAGE" ]; then
+        echo -e "${GREEN}✅ Found local image: ${LOCAL_IMAGE}${NC}"
+        IMAGE_NAME="${LOCAL_IMAGE}"
     else
-        echo -e "${GREEN}✅ Using image: ${IMAGE_NAME}${NC}"
+        echo -e "${RED}❌ Image '${IMAGE_NAME}' not found${NC}"
+        echo -e "${YELLOW}   Build it first with:${NC}"
+        if [ "$PLATFORM" = "mac" ]; then
+            echo -e "   ${GREEN}docker build -f Dockerfile.mac -t live-vlm-webui:latest-mac .${NC}"
+            echo -e "   ${YELLOW}Or pull from registry:${NC}"
+            echo -e "   ${GREEN}docker pull ${IMAGE_NAME}${NC}"
+        elif [ "$PLATFORM" = "arm64-sbsa" ]; then
+            echo -e "   ${GREEN}docker build -t live-vlm-webui:dgx-spark .${NC}"
+        else
+            echo -e "   ${GREEN}docker build -t live-vlm-webui:x86 .${NC}"
+        fi
+        exit 1
     fi
+else
+    echo -e "${GREEN}✅ Using image: ${IMAGE_NAME}${NC}"
 fi
 
 # Build run command based on platform

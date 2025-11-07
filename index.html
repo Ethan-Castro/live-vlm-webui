@@ -2411,7 +2411,13 @@
                 return '/images/dgx-spark_256px.png';
             }
 
-            // Mac products - use generic workstation icon (determine light/dark based on theme)
+            // MacBook - use laptop icon (theme-aware)
+            if (productName.includes('MacBook')) {
+                const isLightTheme = document.body.classList.contains('light-theme');
+                return isLightTheme ? '/images/m48-laptop-256px-blk.png' : '/images/m48-laptop-256px-wht.png';
+            }
+
+            // Other Mac products (Mac mini, iMac, Mac Studio, Mac Pro) - use workstation icon
             if (productName.includes('Mac')) {
                 const isLightTheme = document.body.classList.contains('light-theme');
                 return isLightTheme ? '/images/m48-workstation-256px-blk.png' : '/images/m48-workstation-256px-wht.png';
