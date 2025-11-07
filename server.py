@@ -642,6 +642,13 @@ def main():
     app.router.add_get("/detect-services", detect_services)
     app.router.add_get("/ws", websocket_handler)
     app.router.add_post("/offer", offer)
+
+    # Serve static files (images, etc.)
+    images_dir = os.path.join(os.path.dirname(__file__), "images")
+    if os.path.exists(images_dir):
+        app.router.add_static("/images", images_dir, name="images")
+        logger.info(f"Serving static files from: {images_dir}")
+
     app.on_startup.append(on_startup)
     app.on_shutdown.append(on_shutdown)
 

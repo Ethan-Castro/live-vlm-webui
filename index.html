@@ -687,6 +687,38 @@
             filter: grayscale(0.3);
         }
 
+        /* System Stats Card - Background Image */
+        #systemStatsCard {
+            position: relative;
+            overflow: hidden;
+        }
+
+        #systemStatsCard::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            background-image: var(--system-bg-image, none);
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: bottom right 80px;
+            opacity: 0.08;
+            filter: blur(2px);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body.light-theme #systemStatsCard::before {
+            opacity: 0.05;
+        }
+
+        #systemStatsCard > * {
+            position: relative;
+            z-index: 1;
+        }
+
         .api-preset-item {
             padding: 10px 16px;
             cursor: pointer;
@@ -1542,8 +1574,13 @@
                     <div class="result-title">
                         <i data-lucide="activity"></i> Local System Stats
                     </div>
-                    <div style="font-size: 12px; color: var(--text-secondary); text-align: right; font-weight: 400; flex-shrink: 1; min-width: 0;">
-                        <span id="systemInfoHeader">Loading...</span>
+                    <div style="display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--text-secondary); text-align: right; font-weight: 400; flex-shrink: 1; min-width: 0;">
+                        <span id="systemInfoHeader" style="flex: 1;">Loading...</span>
+                        <img id="systemProductImage"
+                             src=""
+                             alt="System"
+                             style="width: 48px; height: 48px; object-fit: contain; display: none;"
+                             onerror="this.style.display='none';">
                     </div>
                 </div>
 
@@ -1730,6 +1767,18 @@
             themeText.textContent = isLight ? 'Light' : 'Dark';
             localStorage.setItem('theme', isLight ? 'light' : 'dark');
             lucide.createIcons();
+
+            // Update product image for theme-aware icons (Mac/PC workstation icons)
+            if (window.lastSystemStats) {
+                const productImg = document.getElementById('systemProductImage');
+                const imageSrc = getSystemProductImage(window.lastSystemStats);
+                if (imageSrc) {
+                    productImg.src = imageSrc;
+                    // Also update background image
+                    const systemStatsCard = document.getElementById('systemStatsCard');
+                    systemStatsCard.style.setProperty('--system-bg-image', `url('${imageSrc}')`);
+                }
+            }
         });
 
         // Load saved theme
@@ -2338,6 +2387,44 @@
             ctx.fill();
         }
 
+        // Get product image based on system stats
+        function getSystemProductImage(stats) {
+            const productName = stats.product_name || '';
+            const boardName = stats.board_name || '';
+            const platform = stats.platform || '';
+            const gpuName = stats.gpu_name || '';
+
+            // Jetson boards
+            if (boardName.includes('Thor') || productName.includes('Thor')) {
+                return '/images/jetson-agx-thor-devkit_256px.png';
+            }
+            if (boardName.includes('Orin') || productName.includes('Orin')) {
+                return '/images/jetson-agx-orin-devkit_256px.png';
+            }
+
+            // DGX systems
+            if (productName.includes('DGX Spark')) {
+                return '/images/dgx-spark_256px.png';
+            }
+
+            // Mac products - use generic workstation icon (determine light/dark based on theme)
+            if (productName.includes('Mac')) {
+                const isLightTheme = document.body.classList.contains('light-theme');
+                return isLightTheme ? '/images/m48-workstation-256px-blk.png' : '/images/m48-workstation-256px-wht.png';
+            }
+
+            // PC with NVIDIA GPU - show NVIDIA GPU chip image
+            if (gpuName.toLowerCase().includes('nvidia') || gpuName.toLowerCase().includes('geforce') ||
+                gpuName.toLowerCase().includes('rtx') || gpuName.toLowerCase().includes('gtx') ||
+                gpuName.toLowerCase().includes('quadro') || gpuName.toLowerCase().includes('tesla')) {
+                return '/images/m48-gpu-chip-text-256px-grn.png';
+            }
+
+            // Generic PC - use workstation icon
+            const isLightTheme = document.body.classList.contains('light-theme');
+            return isLightTheme ? '/images/m48-workstation-256px-blk.png' : '/images/m48-workstation-256px-wht.png';
+        }
+
         // Update GPU Stats
         function updateGPUStats(stats) {
             // Update system info header
@@ -2358,17 +2445,37 @@
             const gpuCores = stats.gpu_cores || 0;
 
             if (boardName && typeof boardName === 'string') {
-                // Jetson: Show board name prominently with GPU suffix
+                // Jetson: Two-line format
+                // Line 1: Board name (hostname)
+                // Line 2: GPU name
                 const gpuDisplayName = gpuName.includes('GPU') ? gpuName : `${gpuName} GPU`;
-                systemInfoElem.innerHTML = `<b>${boardName}</b> (${hostname}) with ${gpuDisplayName}`;
+                systemInfoElem.innerHTML = `<b>${boardName}</b> (<code>${hostname}</code>)<br>${gpuDisplayName}`;
             } else if (productName && productName.includes('Mac')) {
-                // Mac: Show "MacBook Pro 16" M4 Max (`hostname`) with M4 Max 40-core GPU"
+                // Mac: Two-line format
+                // Line 1: Product name CPU (hostname)
+                // Line 2: GPU with cores
                 const gpuText = gpuCores > 0 ? `${gpuName} ${gpuCores}-core GPU` : `${gpuName} GPU`;
-                systemInfoElem.innerHTML = `${productName} ${cpuModel} (<code>${hostname}</code>) with ${gpuText}`;
+                systemInfoElem.innerHTML = `${productName} ${cpuModel} (<code>${hostname}</code>)<br>${gpuText}`;
             } else {
-                // PC: Show hostname (CPU) with GPU
+                // PC: Two-line format
+                // Line 1: Hostname (CPU)
+                // Line 2: GPU name
                 const gpuDisplayName = gpuName.includes('GPU') ? gpuName : `${gpuName} GPU`;
-                systemInfoElem.textContent = `${hostname} (${cpuModel}) with ${gpuDisplayName}`;
+                systemInfoElem.innerHTML = `${hostname} (${cpuModel})<br>${gpuDisplayName}`;
+            }
+
+            // Update product image (icon in header)
+            const productImg = document.getElementById('systemProductImage');
+            const imageSrc = getSystemProductImage(stats);
+            if (imageSrc) {
+                productImg.src = imageSrc;
+                productImg.style.display = 'block';
+
+                // Also set as background image for the card
+                const systemStatsCard = document.getElementById('systemStatsCard');
+                systemStatsCard.style.setProperty('--system-bg-image', `url('${imageSrc}')`);
+            } else {
+                productImg.style.display = 'none';
             }
 
             // GPU (Green)
@@ -2508,6 +2615,7 @@
                         countValue.textContent = data.metrics.total_inferences;
                     }
                 } else if (data.type === 'gpu_stats') {
+                    window.lastSystemStats = data.stats;  // Store for theme changes
                     updateGPUStats(data.stats);
                 } else if (data.type === 'status') {
                     // Don't show status messages in result balloon (too flashy)
