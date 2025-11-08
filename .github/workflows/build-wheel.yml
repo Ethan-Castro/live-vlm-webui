@@ -1,0 +1,57 @@
+name: Build Python Wheel
+
+on:
+  push:
+    branches: [ main, feature/* ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install build tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+
+    - name: Build wheel
+      run: python -m build
+
+    - name: Check wheel
+      run: |
+        twine check dist/*
+        ls -lh dist/
+
+    - name: Test wheel installation
+      run: |
+        pip install dist/*.whl
+        python -c "import live_vlm_webui; print(f'✅ Version: {live_vlm_webui.__version__}')"
+        live-vlm-webui --help
+
+    - name: Upload wheel as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-wheel
+        path: dist/*.whl
+        retention-days: 30
+
+    # Optional: Publish to PyPI on release
+    # Uncomment when ready to publish to PyPI:
+    # - name: Publish to PyPI
+    #   if: github.event_name == 'release'
+    #   env:
+    #     TWINE_USERNAME: __token__
+    #     TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+    #   run: twine upload dist/*
+
