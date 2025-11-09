@@ -54,7 +54,6 @@ This document consolidates all TODO items from across the codebase, categorized 
 - [ ] **Remove "coming soon" notes from README**
   - Line 38: PyPI package warning
   - Line 191: Download button mention
-  - Line 477: AMD GPU support mention
 
 - [ ] **Add CHANGELOG.md maintenance**
   - Add [Unreleased] section for future changes
@@ -65,6 +64,55 @@ This document consolidates all TODO items from across the codebase, categorized 
   - Add new platform-specific issues as discovered
 
 ### Features & Enhancements
+
+- [ ] **Jetson GPU stats without jtop dependency** (Platform Support - HIGH PRIORITY)
+  - **Current issue**: jtop (jetson-stats) requirement complicates pip wheel installation
+  - **Goal**: Direct GPU utilization and VRAM consumption retrieval
+  - **Approaches**:
+    - Wait for future L4T release with updated NVML support for Thor
+    - Investigate lower-level interfaces (sysfs, tegrastats alternatives)
+    - Direct GPU metrics access without Python dependencies
+  - **Benefits**:
+    - Simpler pip installation (no jetson-stats complexity)
+    - More efficient monitoring
+    - Better user experience for pip-based installs
+  - **Additional feature**: Stacked memory consumption graph for UMA systems
+    - Jetson and DGX Spark use Unified Memory Architecture
+    - Current sparklines don't show memory composition well
+    - Consider chart library upgrade for better UMA visualization
+  - Priority: High (significantly improves Jetson pip installation experience)
+
+- [ ] **Multi-user/multi-session support** (Architecture - critical for cloud hosting)
+  - **Current limitation**: Single-user, single-session architecture
+    - If accessed by multiple users, they share same VLM service instance and see each other's outputs
+    - Settings changes affect all connected users
+    - Only one VLM inference at a time (sequential processing)
+  - **Required for**: Cloud deployment, team demos, production use
+  - **Implementation levels**:
+    - **Level 1 (Basic)**: Session management with isolated VLM state per user
+      - Session IDs for WebSocket connections
+      - Per-session VLM service instances
+      - Targeted message broadcasting (not broadcast to all)
+      - Effort: ~8-12 hours
+      - Supports: 10-20 concurrent users
+    - **Level 2 (Efficient)**: Shared VLM backend with request queue
+      - Request queue with session context
+      - Fair scheduling and rate limiting per user
+      - Batching for efficiency
+      - Effort: ~16-24 hours
+      - Supports: 20-50 concurrent users
+    - **Level 3 (Enterprise)**: Distributed scalable architecture
+      - Stateless frontend servers
+      - Redis/database for session state
+      - Separate VLM service layer with load balancing
+      - Authentication & authorization
+      - Multi-tenancy support
+      - Effort: ~4-8 weeks (major rewrite)
+      - Supports: 100+ concurrent users
+  - **Current workaround**: Deploy multiple independent instances on different ports
+    - Run separate Python processes or containers, each on different port
+    - Works without code changes, suitable for 5-10 users
+  - Priority: Med (required if to host this web UI on some public instance)
 
 - [ ] **Hardware-accelerated video processing on Jetson** (Performance)
   - Location: `src/live_vlm_webui/video_processor.py:19`
@@ -77,13 +125,13 @@ This document consolidates all TODO items from across the codebase, categorized 
   - Priority: Low (nice-to-have, not essential)
 
 - [ ] **AMD GPU monitoring support** (Platform Support)
-  - Mentioned in README line 477: "AMD (coming soon)"
-  - Priority: Medium (expand platform support)
+  - Priority: Low (expand platform support, not near-term)
   - Requires: ROCm/rocm-smi integration
+  - Note: Removed "coming soon" from README to avoid incorrect expectations
 
-- [ ] **Windows native support verification** (Platform Support)
-  - Currently tested on WSL only
-  - Test on native Windows with CUDA
+- [ ] **WSL support verification** (Platform Support)
+  - Currently not even tested on WSL
+  - Would be nice to test with WSL with Ollama natively running on Windows
   - Priority: Medium
 
 ### Testing
@@ -108,10 +156,6 @@ This document consolidates all TODO items from across the codebase, categorized 
   - Configure PyPI Trusted Publishing
   - Document in `docs/development/releasing.md` (partially done)
 
-- [ ] **Docker multi-arch builds on GitHub Actions**
-  - Currently manual builds
-  - Automate for x86_64, ARM64, Jetson variants
-
 - [ ] **Code coverage improvement**
   - Current: ~20% (per CI reports)
   - Target: >50% for core modules
@@ -121,33 +165,35 @@ This document consolidates all TODO items from across the codebase, categorized 
 
 ## 🎯 Future Roadmap (v0.2.0+)
 
-### Major Features
+### Core Functionality
 
-- [ ] **Support for additional VLM backends**
-  - OpenAI API integration (partially done)
-  - Anthropic Claude API
-  - Azure OpenAI
-  - Local Hugging Face models
-
-- [ ] **Video recording/export functionality**
-  - Record video stream with overlaid VLM analysis
-  - Export as MP4 with annotations
+- [ ] **Recording/export functionality**
+  - Record analysis results or even with video stream
+  - If with video, export video as MP4/webm with annotations
   - Timestamp-based analysis log
 
-- [ ] **Multi-camera support**
-  - Switch between multiple connected cameras
-  - Picture-in-picture view
-  - Synchronized multi-camera analysis
+- [] **Side-by-side VLMs comparison**
+  - Compare two different VLM's outputs side-by-side
 
-- [ ] **Analysis history/logging**
-  - Persistent storage of analysis results
-  - Search/filter past analyses
-  - Export analysis logs
+- [ ] **Multi-frame support**
+  - Option to injest multiple frames from WebRTC to VLM for temporal uderstading
 
-- [ ] **Custom prompts/templates**
+- [ ] **Prompt template addition**
   - User-defined analysis prompts
-  - Prompt templates for common use cases
+  - More Prompt templates for common use cases
   - Per-model prompt customization
+
+### Validation
+
+- [ ] **Additional VLM backends**
+  - Local
+    - VLLM (partically tested)
+    - SGLang
+    - Local Hugging Face models
+  - Clooud
+    - OpenAI API (partially done)
+    - Anthropic Claude API
+    - Azure OpenAI
 
 ### Platform Support
 
@@ -156,30 +202,13 @@ This document consolidates all TODO items from across the codebase, categorized 
   - Bundled Python runtime
   - One-click installation
 
-- [ ] **Raspberry Pi support**
-  - Test on RPi 4/5
-  - Optimize for CPU-only inference
+- [ ] **Raspberry Pi test**
+  - Test on RPi 4/5 (if any VLM run on RPi)
   - Document performance characteristics
-
-- [ ] **Cloud deployment guides**
-  - AWS EC2 with GPU
-  - Google Cloud with TPU
-  - Azure with NVIDIA GPUs
 
 ### UI/UX Improvements
 
-- [ ] **Dark mode toggle**
-  - User preference persistence
-  - System theme detection
-
-- [ ] **Responsive design improvements**
-  - Mobile/tablet layout optimization
-  - Touch-friendly controls
-
-- [ ] **Accessibility enhancements**
-  - Keyboard navigation
-  - Screen reader support
-  - High contrast mode
+Ideas to be examined documented in `docs/development/ui_enhancements.md`
 
 ---
 
@@ -238,6 +267,7 @@ These are checklists in documentation files, not actual TODOs:
 - ✅ Virtual environment detection and activation
 - ✅ Package installation verification in start script
 - ✅ Comprehensive troubleshooting documentation
+- ✅ Docker multi-arch builds on GitHub Actions (amd64, arm64, Jetson Orin, Jetson Thor, Mac)
 
 ---
 

@@ -29,6 +29,18 @@ When creating reference, design, or planning documents (e.g., setup guides, veri
 - Tests: `tests/` directory (if created)
 - Documentation: `docs/` for public docs, `docs/cursor/` for internal/reference docs
 
+## Documentation Cross-References
+
+**IMPORTANT**: Never reference `docs/cursor/` files in public-facing documentation
+
+- ❌ BAD: "See `docs/cursor/MULTI_USER_ANALYSIS.md` for details"
+- ✅ GOOD: Inline the relevant information or create a proper public doc in `docs/`
+
+**Rationale**:
+- `docs/cursor/` files are discussions between individual developers and Cursor AI, particulaly made for the developement at that point of time.
+- These files are gitignored and won't exist for other developers or users
+- Public docs (README.md, docs/development/, docs/setup/, etc.) must be self-contained
+
 ## Git Guidelines
 
 - The `docs/cursor/` directory is ignored in `.gitignore`

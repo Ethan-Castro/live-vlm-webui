@@ -960,7 +960,7 @@ class JetsonOrinMonitor(GPUMonitor):
                                 f"Board name is not a string: {type(board_name)}, value: {board_name}"
                             )
                             board_name = str(board_name) if board_name else None
-                        
+
                         # Clean up Orin Nano naming
                         if board_name and "Orin Nano" in board_name:
                             # Simplify "NVIDIA Jetson Orin Nano Engineering Reference Developer Kit Super"

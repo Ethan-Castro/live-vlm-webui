@@ -474,7 +474,7 @@ Includes:
 - 📱 **Compact layout** - Single-screen design
 
 ### Platform Support
-- 💻 **Cross-platform monitoring** - Auto-detects NVIDIA GPUs (NVML), Apple Silicon, AMD (coming soon)
+- 💻 **Cross-platform monitoring** - Auto-detects NVIDIA GPUs (NVML), Apple Silicon
 - 🖥️ **Dynamic system detection** - CPU model name and hostname
 - 🔒 **HTTPS support** - Self-signed certificates for secure webcam access
 - 🌐 **Universal compatibility** - PC (x86_64), DGX Spark (ARM64 SBSA), Jetson (Orin, Thor), Mac
@@ -532,7 +532,6 @@ We ❤️ contributions from the community! This project is built with passion a
 **Areas for improvement:**
 - 📏 **Jetson VRAM utilization** - Workaround for measuring GPU memory consumption
 - ⚡ **Hardware-accelerated video processing on Jetson** - Use NVENC/NVDEC
-- 🔄 AMD GPU monitoring
 - ➕ **Model download UI** - Ability to initiate backend's model donwload from Web UI
 - 📜 **Log functionality** - Keep the past analysis results viewable
 - 🏆 **Benchmark mode** - Side-by-side model comparison
