@@ -577,17 +577,15 @@ async def create_app(test_mode=False):
     app.router.add_post("/offer", offer)
 
     # Serve static files (images, etc.)
-    if test_mode:
-        # In test mode, serve from src/live_vlm_webui/static/images
-        images_dir = os.path.join(os.path.dirname(__file__), "static", "images")
-    else:
-        # In production, images directory is at project root
-        images_dir = os.path.join(os.path.dirname(__file__), "..", "..", "images")
-
+    # Always serve from static/images within the package (works for both pip and dev installs)
+    images_dir = os.path.join(os.path.dirname(__file__), "static", "images")
     images_dir = os.path.abspath(images_dir)
+    
     if os.path.exists(images_dir):
         app.router.add_static("/images", images_dir, name="images")
         logger.info(f"Serving static files from: {images_dir}")
+    else:
+        logger.warning(f"⚠️  Static images directory not found: {images_dir}")
 
     if not test_mode:
         app.on_startup.append(on_startup)
