@@ -596,6 +596,32 @@ async def create_app(test_mode=False):
     return app
 
 
+def generate_self_signed_cert(cert_path="cert.pem", key_path="key.pem"):
+    """Generate a self-signed SSL certificate if it doesn't exist"""
+    import subprocess
+    import os
+
+    if os.path.exists(cert_path) and os.path.exists(key_path):
+        return True
+
+    logger.info("🔐 Generating self-signed SSL certificate...")
+    try:
+        subprocess.run([
+            "openssl", "req", "-x509", "-newkey", "rsa:4096", "-nodes",
+            "-out", cert_path, "-keyout", key_path, "-days", "365",
+            "-subj", "/CN=localhost"
+        ], check=True, capture_output=True)
+        logger.info(f"✅ Generated {cert_path} and {key_path}")
+        return True
+    except FileNotFoundError:
+        logger.warning("⚠️  openssl not found - cannot auto-generate certificates")
+        logger.warning("⚠️  Install openssl: sudo apt install openssl (Linux) or brew install openssl (Mac)")
+        return False
+    except subprocess.CalledProcessError as e:
+        logger.warning(f"⚠️  Failed to generate certificates: {e}")
+        return False
+
+
 def main():
     """Main entry point"""
     import argparse
@@ -634,8 +660,9 @@ def main():
         help="Prompt to send to VLM (default: 'Describe what you see...')",
     )
     parser.add_argument("--process-every", type=int, default=30, help="Process every Nth frame")
-    parser.add_argument("--ssl-cert", help="Path to SSL certificate file (enables HTTPS)")
-    parser.add_argument("--ssl-key", help="Path to SSL private key file (enables HTTPS)")
+    parser.add_argument("--ssl-cert", default="cert.pem", help="Path to SSL certificate file (default: cert.pem, auto-generated if missing)")
+    parser.add_argument("--ssl-key", default="key.pem", help="Path to SSL private key file (default: key.pem, auto-generated if missing)")
+    parser.add_argument("--no-ssl", action="store_true", help="Disable SSL (not recommended - webcam requires HTTPS)")
 
     args = parser.parse_args()
 
@@ -685,18 +712,27 @@ def main():
     # Create web application using create_app
     app = asyncio.run(create_app(test_mode=False))
 
-    # Setup SSL if certificates provided
+    # Setup SSL (auto-generate certificates if needed)
     ssl_context = None
     protocol = "http"
-    if args.ssl_cert and args.ssl_key:
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        ssl_context.load_cert_chain(args.ssl_cert, args.ssl_key)
-        protocol = "https"
-        logger.info("SSL enabled - using HTTPS")
+    if not args.no_ssl:
+        # Try to auto-generate if certificates don't exist
+        import os
+        if not os.path.exists(args.ssl_cert) or not os.path.exists(args.ssl_key):
+            generate_self_signed_cert(args.ssl_cert, args.ssl_key)
+
+        # Load certificates if they exist
+        if os.path.exists(args.ssl_cert) and os.path.exists(args.ssl_key):
+            ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            ssl_context.load_cert_chain(args.ssl_cert, args.ssl_key)
+            protocol = "https"
+            logger.info("SSL enabled - using HTTPS")
+        else:
+            logger.warning("⚠️  SSL certificates not found and could not be generated")
+            logger.warning("⚠️  Webcam access requires HTTPS!")
+            logger.warning("⚠️  Install openssl or generate manually with: openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 365 -subj '/CN=localhost'")
     else:
-        logger.warning("⚠️  SSL not enabled - webcam access requires HTTPS!")
-        logger.warning("⚠️  Generate certificates with: ./generate_cert.sh")
-        logger.warning("⚠️  Then restart with: --ssl-cert cert.pem --ssl-key key.pem")
+        logger.warning("⚠️  SSL disabled - webcam access requires HTTPS!")
 
     # Get network addresses
     import socket
