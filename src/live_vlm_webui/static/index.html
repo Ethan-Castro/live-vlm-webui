@@ -2453,6 +2453,11 @@
             if (boardName.includes('Thor') || productName.includes('Thor')) {
                 return '/images/jetson-agx-thor-devkit_256px.png';
             }
+            // Check for Orin Nano first (more specific)
+            if (boardName.includes('Orin Nano') || productName.includes('Orin Nano')) {
+                return '/images/jetson-orin-nano-devkit_217px.png';
+            }
+            // Then check for general Orin (AGX Orin)
             if (boardName.includes('Orin') || productName.includes('Orin')) {
                 return '/images/jetson-agx-orin-devkit_256px.png';
             }

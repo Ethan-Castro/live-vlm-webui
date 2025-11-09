@@ -59,6 +59,7 @@ class TestStaticFiles(AioHTTPTestCase):
         # Test actual image paths that exist in the project
         required_images = [
             "/images/jetson-agx-orin-devkit_256px.png",
+            "/images/jetson-orin-nano-devkit_217px.png",
             "/images/jetson-agx-thor-devkit_256px.png",
             "/images/dgx-spark_256px.png",
         ]
