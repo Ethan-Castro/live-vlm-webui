@@ -616,7 +616,9 @@ def get_app_config_dir():
             config_dir = Path.home() / "Library" / "Application Support" / "live-vlm-webui"
         else:
             # Linux/Unix (including Jetson)
-            config_dir = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "live-vlm-webui"
+            config_dir = (
+                Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "live-vlm-webui"
+            )
     else:
         # Windows
         config_dir = Path(os.environ.get("APPDATA", Path.home())) / "live-vlm-webui"
@@ -674,6 +676,7 @@ def main():
     """Main entry point"""
     import argparse
     import ssl
+    from . import __version__
 
     parser = argparse.ArgumentParser(
         description="WebRTC Live VLM WebUI - Real-time vision model interaction",
@@ -683,6 +686,11 @@ def main():
         "  Ollama:  python server.py --model llava:7b --api-base http://localhost:11434/v1\n"
         "  HTTPS:   python server.py --model llava:7b --api-base http://localhost:11434/v1 --ssl-cert cert.pem --ssl-key key.pem",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
     )
     parser.add_argument("--host", default="0.0.0.0", help="Host to bind to (default: 0.0.0.0)")
     parser.add_argument("--port", type=int, default=8090, help="Port to bind to (default: 8090)")
