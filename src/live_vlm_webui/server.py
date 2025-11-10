@@ -901,20 +901,20 @@ def stop():
     """Stop the running live-vlm-webui server"""
     import sys
     import time
-    
+
     try:
         import psutil
     except ImportError:
         logger.error("psutil is required for the stop command")
         logger.error("Install it with: pip install live-vlm-webui[dev]")
         sys.exit(1)
-    
+
     print("Stopping Live VLM WebUI server...")
-    
+
     # Find and kill processes running live_vlm_webui.server
     found = False
     killed = []
-    
+
     for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
         try:
             cmdline = proc.info.get('cmdline')
@@ -929,14 +929,14 @@ def stop():
                         killed.append(proc)
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             pass
-    
+
     if not found:
         print("✓ No running server found")
         return
-    
+
     # Wait for graceful shutdown
     time.sleep(2)
-    
+
     # Force kill if still running
     for proc in killed:
         try:
@@ -945,7 +945,7 @@ def stop():
                 proc.kill()
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             pass
-    
+
     # Final verification
     time.sleep(1)
     still_running = False
@@ -959,7 +959,7 @@ def stop():
                         still_running = True
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             pass
-    
+
     if still_running:
         print("❌ Failed to stop server")
         sys.exit(1)
