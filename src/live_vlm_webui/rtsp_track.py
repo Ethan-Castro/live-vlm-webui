@@ -16,6 +16,10 @@ from typing import Optional
 from aiortc import VideoStreamTrack
 from av import VideoFrame
 
+# Suppress verbose ffmpeg/libav logging (HEVC decoder errors are normal for IP cameras)
+# These POC/slice errors happen due to network packet loss but stream recovers automatically
+av.logging.set_level(av.logging.FATAL)  # Only show fatal errors that stop the stream
+
 logger = logging.getLogger(__name__)
 
 
