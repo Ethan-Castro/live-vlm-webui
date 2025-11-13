@@ -118,6 +118,21 @@ All blocking items for v0.1.0 have been completed:
   - Priority: Medium (nice quality-of-life improvement, enhances VLM output usability)
   - Effort: ~4-6 hours (add library, implement rendering, styling, testing)
 
+- [ ] **Honor OS/environment dark/light mode preference** (UI/UX - MEDIUM PRIORITY)
+  - **Current state**: UI uses a fixed dark theme
+  - **Goal**: Automatically detect and respect OS-level dark/light mode preference
+  - **Implementation**:
+    - Use CSS `prefers-color-scheme` media query
+    - Detect system preference via JavaScript (`window.matchMedia`)
+    - Support dynamic theme switching when OS preference changes
+    - Optional: Add manual theme toggle override in settings
+  - **Benefits**:
+    - Better UX for users with light mode preference
+    - Respects accessibility settings
+    - Modern web app best practice
+  - Priority: Medium
+  - Effort: ~2-4 hours (CSS variables, theme switching logic, testing)
+
 - [ ] **Jetson GPU stats without jtop dependency** (Platform Support - HIGH PRIORITY)
   - **Current issue**: jtop (jetson-stats) requirement complicates pip wheel installation
   - **Goal**: Direct GPU utilization and VRAM consumption retrieval

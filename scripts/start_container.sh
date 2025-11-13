@@ -18,12 +18,222 @@
 
 set -e
 
+# ==============================================================================
+# Parse command-line arguments
+# ==============================================================================
+REQUESTED_VERSION=""
+LIST_VERSIONS=false
+SKIP_VERSION_CHECK=false
+
+show_usage() {
+    echo "Usage: $0 [OPTIONS]"
+    echo ""
+    echo "Options:"
+    echo "  --version VERSION    Specify Docker image version (e.g., 0.2.0, latest)"
+    echo "  --list-versions      List available Docker image versions and exit"
+    echo "  --skip-version-pick  Skip interactive version selection (use latest)"
+    echo "  -h, --help          Show this help message"
+    echo ""
+    echo "Examples:"
+    echo "  $0                          # Interactive mode - choose version"
+    echo "  $0 --version 0.2.0          # Use specific version"
+    echo "  $0 --version latest         # Use latest version"
+    echo "  $0 --skip-version-pick      # Use latest without prompting"
+    echo "  $0 --list-versions          # List available versions"
+    echo ""
+}
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --version)
+            REQUESTED_VERSION="$2"
+            shift 2
+            ;;
+        --list-versions)
+            LIST_VERSIONS=true
+            shift
+            ;;
+        --skip-version-pick)
+            SKIP_VERSION_CHECK=true
+            shift
+            ;;
+        -h|--help)
+            show_usage
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo ""
+            show_usage
+            exit 1
+            ;;
+    esac
+done
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# ==============================================================================
+# Functions to fetch and display available versions
+# ==============================================================================
+
+# Fetch available versions from GitHub Container Registry
+fetch_available_versions() {
+    local repo_owner="nvidia-ai-iot"
+    local repo_name="live-vlm-webui"
+    local package_name="live-vlm-webui"
+
+    # Use GitHub API to list available tags
+    # Note: This requires curl and jq (jq is optional, we'll parse JSON manually if not available)
+    local api_url="https://api.github.com/users/${repo_owner}/packages/container/${package_name}/versions"
+
+    # Try to fetch versions using curl
+    if command -v curl &> /dev/null; then
+        local response=$(curl -s -H "Accept: application/vnd.github.v3+json" "${api_url}" 2>/dev/null)
+
+        if [ -n "$response" ] && command -v jq &> /dev/null; then
+            # Parse with jq if available
+            echo "$response" | jq -r '.[].metadata.container.tags[]' 2>/dev/null | sort -V -r | uniq
+        elif [ -n "$response" ]; then
+            # Parse manually without jq
+            echo "$response" | grep -o '"tags":\[.*?\]' | grep -o '"[^"]*"' | tr -d '"' | grep -v "^tags$" | sort -V -r | uniq
+        fi
+    fi
+}
+
+# List available versions
+list_versions() {
+    echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
+    echo -e "${BLUE}    Available Docker Image Versions${NC}"
+    echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
+    echo ""
+
+    echo -e "${YELLOW}📦 Fetching available versions from registry...${NC}"
+    local versions=$(fetch_available_versions)
+
+    if [ -z "$versions" ]; then
+        echo -e "${YELLOW}⚠️  Could not fetch versions from registry${NC}"
+        echo -e "${YELLOW}   Common versions:${NC}"
+        echo -e "   - ${GREEN}latest${NC} (most recent release)"
+        echo -e "   - ${GREEN}0.1.1${NC}"
+        echo -e "   - ${GREEN}0.1.0${NC}"
+        echo ""
+        echo -e "${BLUE}ℹ️  Platform-specific tags:${NC}"
+        echo -e "   - ${GREEN}latest-mac${NC} (for macOS)"
+        echo -e "   - ${GREEN}latest-jetson-orin${NC} (for Jetson Orin)"
+        echo -e "   - ${GREEN}latest-jetson-thor${NC} (for Jetson Thor)"
+        echo ""
+        echo -e "${YELLOW}💡 Tip: Install 'jq' for automatic version detection:${NC}"
+        echo -e "   - Linux: ${GREEN}sudo apt install jq${NC}"
+        echo -e "   - Mac:   ${GREEN}brew install jq${NC}"
+    else
+        echo -e "${GREEN}✅ Available versions:${NC}"
+        echo ""
+
+        # Filter and display versions
+        local base_versions=$(echo "$versions" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$|^latest$' | head -20)
+        local platform_versions=$(echo "$versions" | grep -E 'latest-(mac|jetson)' | head -10)
+
+        if [ -n "$base_versions" ]; then
+            echo -e "${BLUE}Base versions (multi-arch):${NC}"
+            echo "$base_versions" | while read -r version; do
+                echo -e "   - ${GREEN}${version}${NC}"
+            done
+            echo ""
+        fi
+
+        if [ -n "$platform_versions" ]; then
+            echo -e "${BLUE}Platform-specific versions:${NC}"
+            echo "$platform_versions" | while read -r version; do
+                echo -e "   - ${GREEN}${version}${NC}"
+            done
+            echo ""
+        fi
+    fi
+
+    echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
+}
+
+# Interactive version picker
+pick_version() {
+    local platform_suffix="$1"
+
+    echo -e "${YELLOW}🔍 Fetching available versions...${NC}"
+    local versions=$(fetch_available_versions)
+
+    # Filter versions by platform
+    local filtered_versions=""
+    if [ -n "$platform_suffix" ]; then
+        # Get platform-specific versions
+        filtered_versions=$(echo "$versions" | grep -E "^[0-9]+\.[0-9]+\.[0-9]+${platform_suffix}$|^latest${platform_suffix}$" | head -10)
+        # Also add base versions if it's not a platform-specific suffix
+        if [ "$platform_suffix" = "" ]; then
+            local base_versions=$(echo "$versions" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$|^latest$' | head -10)
+            filtered_versions="${base_versions}"
+        fi
+    else
+        filtered_versions=$(echo "$versions" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$|^latest$' | head -10)
+    fi
+
+    if [ -z "$filtered_versions" ]; then
+        echo -e "${YELLOW}⚠️  Could not fetch versions from registry${NC}"
+        echo -e "${YELLOW}   Using 'latest' as default${NC}"
+        echo "latest"
+        return
+    fi
+
+    echo ""
+    echo -e "${GREEN}Available versions:${NC}"
+    local version_array=()
+    local index=1
+
+    # Build array and display
+    while IFS= read -r version; do
+        version_array+=("$version")
+        if [ "$version" = "latest" ]; then
+            echo -e "  ${BLUE}[${index}]${NC} ${GREEN}${version}${NC} ${YELLOW}(recommended)${NC}"
+        else
+            echo -e "  ${BLUE}[${index}]${NC} ${GREEN}${version}${NC}"
+        fi
+        ((index++))
+    done <<< "$filtered_versions"
+
+    echo ""
+    echo -e "${YELLOW}💡 Tip: Use --version flag to skip this prompt${NC}"
+    echo -e "   Example: $0 --version 0.2.0"
+    echo ""
+
+    # Get user selection
+    while true; do
+        read -p "Select version number [1] or enter custom version: " selection
+
+        # Default to 1 (latest) if empty
+        if [ -z "$selection" ]; then
+            selection="1"
+        fi
+
+        # Check if it's a number selection
+        if [[ "$selection" =~ ^[0-9]+$ ]] && [ "$selection" -ge 1 ] && [ "$selection" -le "${#version_array[@]}" ]; then
+            local selected_index=$((selection - 1))
+            echo "${version_array[$selected_index]}"
+            return
+        else
+            # Treat as custom version string
+            echo "$selection"
+            return
+        fi
+    done
+}
+
+# Handle --list-versions flag
+if [ "$LIST_VERSIONS" = true ]; then
+    list_versions
+    exit 0
+fi
 
 echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
 echo -e "${BLUE}    Live-VLM-WebUI Docker Container Starter${NC}"
@@ -71,14 +281,15 @@ echo -e "   OS: ${GREEN}${OS}${NC}"
 
 # Detect platform type
 PLATFORM="unknown"
-IMAGE_TAG="latest"
+BASE_TAG="latest"
+PLATFORM_SUFFIX=""
 GPU_FLAG=""
 RUNTIME_FLAG=""
 
 # Check if running on macOS
 if [ "$OS" = "Darwin" ]; then
     PLATFORM="mac"
-    IMAGE_TAG="latest-mac"
+    PLATFORM_SUFFIX="-mac"
     GPU_FLAG=""  # No GPU support on Mac Docker
     echo -e "   Platform: ${GREEN}macOS (Apple Silicon)${NC}"
     echo ""
@@ -107,7 +318,7 @@ if [ "$OS" = "Darwin" ]; then
 
 elif [ "$ARCH" = "x86_64" ]; then
     PLATFORM="x86"
-    IMAGE_TAG="latest"
+    PLATFORM_SUFFIX=""
     GPU_FLAG="--gpus all"
     echo -e "   Platform: ${GREEN}PC (x86_64)${NC}"
 
@@ -120,12 +331,12 @@ elif [ "$ARCH" = "aarch64" ]; then
         # Check for Thor (L4T R38+) vs Orin (L4T R36)
         if [ "$L4T_VERSION" -ge 38 ]; then
             PLATFORM="jetson-thor"
-            IMAGE_TAG="latest-jetson-thor"
+            PLATFORM_SUFFIX="-jetson-thor"
             GPU_FLAG="--gpus all"
             echo -e "   Platform: ${GREEN}NVIDIA Jetson Thor${NC} (L4T R${L4T_VERSION})"
         else
             PLATFORM="jetson-orin"
-            IMAGE_TAG="latest-jetson-orin"
+            PLATFORM_SUFFIX="-jetson-orin"
             RUNTIME_FLAG="--runtime nvidia"
             echo -e "   Platform: ${GREEN}NVIDIA Jetson Orin${NC} (L4T R${L4T_VERSION})"
         fi
@@ -134,7 +345,7 @@ elif [ "$ARCH" = "aarch64" ]; then
         # Check if NVIDIA GPU is available
         if command -v nvidia-smi &> /dev/null && nvidia-smi &> /dev/null; then
             PLATFORM="arm64-sbsa"
-            IMAGE_TAG="latest"  # Multi-arch image (works on both x86 and ARM64)
+            PLATFORM_SUFFIX=""  # Multi-arch image (works on both x86 and ARM64)
             GPU_FLAG="--gpus all"
 
             # Check if it's specifically DGX Spark
@@ -161,12 +372,59 @@ else
     exit 1
 fi
 
+echo ""
+
+# ==============================================================================
+# Version Selection
+# ==============================================================================
+if [ -n "$REQUESTED_VERSION" ]; then
+    # User specified version via --version flag
+    SELECTED_VERSION="$REQUESTED_VERSION"
+    echo -e "${GREEN}✅ Using specified version: ${SELECTED_VERSION}${NC}"
+elif [ "$SKIP_VERSION_CHECK" = true ]; then
+    # User wants to skip and use latest
+    SELECTED_VERSION="latest"
+    echo -e "${GREEN}✅ Using latest version${NC}"
+else
+    # Interactive mode - let user pick version
+    echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
+    echo -e "${BLUE}    Select Docker Image Version${NC}"
+    echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
+    echo ""
+
+    SELECTED_VERSION=$(pick_version "$PLATFORM_SUFFIX")
+
+    echo ""
+    echo -e "${GREEN}✅ Selected version: ${SELECTED_VERSION}${NC}"
+fi
+
+# Construct the final image tag
+# If selected version already has platform suffix, use as-is
+# Otherwise, append platform suffix if needed
+if [[ "$SELECTED_VERSION" =~ -mac$|-jetson-orin$|-jetson-thor$ ]]; then
+    # Version already has platform suffix
+    IMAGE_TAG="$SELECTED_VERSION"
+elif [ "$SELECTED_VERSION" = "latest" ] && [ -n "$PLATFORM_SUFFIX" ]; then
+    # Latest with platform suffix
+    IMAGE_TAG="latest${PLATFORM_SUFFIX}"
+elif [[ "$SELECTED_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && [ -n "$PLATFORM_SUFFIX" ]; then
+    # Semver with platform suffix
+    IMAGE_TAG="${SELECTED_VERSION}${PLATFORM_SUFFIX}"
+else
+    # Use as-is (multi-arch image or custom tag)
+    IMAGE_TAG="$SELECTED_VERSION"
+fi
+
+echo ""
+
 # Container name
 CONTAINER_NAME="live-vlm-webui"
 
 # Set image name based on platform
 # All platforms now use registry images
 IMAGE_NAME="ghcr.io/nvidia-ai-iot/live-vlm-webui:${IMAGE_TAG}"
+
+echo -e "${BLUE}🐳 Docker Image: ${GREEN}${IMAGE_NAME}${NC}"
 
 # Check if container already exists
 if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
@@ -195,23 +453,30 @@ fi
 
 # Check if image exists (registry or local)
 if ! docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^${IMAGE_NAME}$"; then
-    # Try common local image names
+    # Try common local image names with the same tag
     LOCAL_IMAGE=""
-    if [ "$PLATFORM" = "mac" ]; then
-        # Check for Mac local builds
-        if docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^live-vlm-webui:latest-mac$"; then
-            LOCAL_IMAGE="live-vlm-webui:latest-mac"
-        fi
-    elif [ "$PLATFORM" = "arm64-sbsa" ]; then
-        # Check for DGX Spark specific tags
-        if docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^live-vlm-webui:dgx-spark$"; then
-            LOCAL_IMAGE="live-vlm-webui:dgx-spark"
-        elif docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^live-vlm-webui:arm64$"; then
-            LOCAL_IMAGE="live-vlm-webui:arm64"
-        fi
-    elif [ "$PLATFORM" = "x86" ]; then
-        if docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^live-vlm-webui:x86$"; then
-            LOCAL_IMAGE="live-vlm-webui:x86"
+    LOCAL_TAG="live-vlm-webui:${IMAGE_TAG}"
+
+    if docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^${LOCAL_TAG}$"; then
+        LOCAL_IMAGE="$LOCAL_TAG"
+    else
+        # Try platform-specific fallback tags for local builds
+        if [ "$PLATFORM" = "mac" ]; then
+            # Check for Mac local builds
+            if docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^live-vlm-webui:latest-mac$"; then
+                LOCAL_IMAGE="live-vlm-webui:latest-mac"
+            fi
+        elif [ "$PLATFORM" = "arm64-sbsa" ]; then
+            # Check for DGX Spark specific tags
+            if docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^live-vlm-webui:dgx-spark$"; then
+                LOCAL_IMAGE="live-vlm-webui:dgx-spark"
+            elif docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^live-vlm-webui:arm64$"; then
+                LOCAL_IMAGE="live-vlm-webui:arm64"
+            fi
+        elif [ "$PLATFORM" = "x86" ]; then
+            if docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^live-vlm-webui:x86$"; then
+                LOCAL_IMAGE="live-vlm-webui:x86"
+            fi
         fi
     fi
 
@@ -222,17 +487,25 @@ if ! docker images --format '{{.Repository}}:{{.Tag}}' | grep -q "^${IMAGE_NAME}
         echo -e "${RED}❌ Image '${IMAGE_NAME}' not found${NC}"
         echo -e "${YELLOW}   Build it first with:${NC}"
         if [ "$PLATFORM" = "mac" ]; then
-            echo -e "   ${GREEN}docker build -f docker/Dockerfile.mac -t live-vlm-webui:latest-mac .${NC}"
+            echo -e "   ${GREEN}docker build -f docker/Dockerfile.mac -t ${IMAGE_NAME} .${NC}"
             echo -e "   ${YELLOW}Or pull from registry:${NC}"
             echo -e "   ${GREEN}docker pull ${IMAGE_NAME}${NC}"
         elif [ "$PLATFORM" = "arm64-sbsa" ]; then
-            echo -e "   ${GREEN}docker build -f docker/Dockerfile -t live-vlm-webui:dgx-spark .${NC}"
+            echo -e "   ${GREEN}docker build -f docker/Dockerfile -t ${IMAGE_NAME} .${NC}"
+            echo -e "   ${YELLOW}Or pull from registry:${NC}"
+            echo -e "   ${GREEN}docker pull ${IMAGE_NAME}${NC}"
         elif [ "$PLATFORM" = "jetson-thor" ]; then
-            echo -e "   ${GREEN}docker build -f docker/Dockerfile.jetson-thor -t live-vlm-webui:latest-jetson-thor .${NC}"
+            echo -e "   ${GREEN}docker build -f docker/Dockerfile.jetson-thor -t ${IMAGE_NAME} .${NC}"
+            echo -e "   ${YELLOW}Or pull from registry:${NC}"
+            echo -e "   ${GREEN}docker pull ${IMAGE_NAME}${NC}"
         elif [ "$PLATFORM" = "jetson-orin" ]; then
-            echo -e "   ${GREEN}docker build -f docker/Dockerfile.jetson-orin -t live-vlm-webui:latest-jetson-orin .${NC}"
+            echo -e "   ${GREEN}docker build -f docker/Dockerfile.jetson-orin -t ${IMAGE_NAME} .${NC}"
+            echo -e "   ${YELLOW}Or pull from registry:${NC}"
+            echo -e "   ${GREEN}docker pull ${IMAGE_NAME}${NC}"
         else
-            echo -e "   ${GREEN}docker build -f docker/Dockerfile -t live-vlm-webui:x86 .${NC}"
+            echo -e "   ${GREEN}docker build -f docker/Dockerfile -t ${IMAGE_NAME} .${NC}"
+            echo -e "   ${YELLOW}Or pull from registry:${NC}"
+            echo -e "   ${GREEN}docker pull ${IMAGE_NAME}${NC}"
         fi
         exit 1
     fi
