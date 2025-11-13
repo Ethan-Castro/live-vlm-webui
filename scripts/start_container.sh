@@ -24,15 +24,17 @@ set -e
 REQUESTED_VERSION=""
 LIST_VERSIONS=false
 SKIP_VERSION_CHECK=false
+SIMULATE_PUBLIC=false
 
 show_usage() {
     echo "Usage: $0 [OPTIONS]"
     echo ""
     echo "Options:"
-    echo "  --version VERSION    Specify Docker image version (e.g., 0.2.0, latest)"
-    echo "  --list-versions      List available Docker image versions and exit"
-    echo "  --skip-version-pick  Skip interactive version selection (use latest)"
-    echo "  -h, --help          Show this help message"
+    echo "  --version VERSION      Specify Docker image version (e.g., 0.2.0, latest)"
+    echo "  --list-versions        List available Docker image versions and exit"
+    echo "  --skip-version-pick    Skip interactive version selection (use latest)"
+    echo "  --simulate-public      Simulate public API access (ignore GITHUB_TOKEN)"
+    echo "  -h, --help            Show this help message"
     echo ""
     echo "Examples:"
     echo "  $0                          # Interactive mode - choose version"
@@ -40,6 +42,7 @@ show_usage() {
     echo "  $0 --version latest         # Use latest version"
     echo "  $0 --skip-version-pick      # Use latest without prompting"
     echo "  $0 --list-versions          # List available versions"
+    echo "  $0 --list-versions --simulate-public  # Test public API (no token)"
     echo ""
 }
 
@@ -55,6 +58,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --skip-version-pick)
             SKIP_VERSION_CHECK=true
+            shift
+            ;;
+        --simulate-public)
+            SIMULATE_PUBLIC=true
             shift
             ;;
         -h|--help)
@@ -81,28 +88,89 @@ NC='\033[0m' # No Color
 # Functions to fetch and display available versions
 # ==============================================================================
 
-# Fetch available versions from GitHub Container Registry
-fetch_available_versions() {
+# Fetch available versions from GitHub Container Registry (requires auth)
+fetch_versions_from_ghcr() {
     local repo_owner="nvidia-ai-iot"
     local repo_name="live-vlm-webui"
-    local package_name="live-vlm-webui"
 
-    # Use GitHub API to list available tags
-    # Note: This requires curl and jq (jq is optional, we'll parse JSON manually if not available)
-    local api_url="https://api.github.com/users/${repo_owner}/packages/container/${package_name}/versions"
+    # Use GitHub Packages API (requires read:packages scope)
+    local api_url="https://api.github.com/orgs/${repo_owner}/packages/container/${repo_name}/versions"
 
-    # Try to fetch versions using curl
-    if command -v curl &> /dev/null; then
-        local response=$(curl -s -H "Accept: application/vnd.github.v3+json" "${api_url}" 2>/dev/null)
+    if command -v curl &> /dev/null && command -v jq &> /dev/null; then
+        local response=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Accept: application/vnd.github.v3+json" "${api_url}" 2>/dev/null)
 
-        if [ -n "$response" ] && command -v jq &> /dev/null; then
-            # Parse with jq if available
-            echo "$response" | jq -r '.[].metadata.container.tags[]' 2>/dev/null | sort -V -r | uniq
-        elif [ -n "$response" ]; then
-            # Parse manually without jq
-            echo "$response" | grep -o '"tags":\[.*?\]' | grep -o '"[^"]*"' | tr -d '"' | grep -v "^tags$" | sort -V -r | uniq
+        # Check if successful
+        if ! echo "$response" | grep -q '"message"'; then
+            # Extract tags from metadata
+            echo "$response" | jq -r '.[].metadata.container.tags[]?' 2>/dev/null | grep -v '^null$' | sort -V -r | uniq
+            return 0
         fi
     fi
+    return 1
+}
+
+# Fetch available versions from GitHub Releases (public API, no auth required)
+fetch_versions_from_releases() {
+    local repo_owner="nvidia-ai-iot"
+    local repo_name="live-vlm-webui"
+
+    # Use GitHub Releases API (public, rate-limited but no auth needed)
+    # Rate limits: 60/hour without auth, 5000/hour with GITHUB_TOKEN
+    local api_url="https://api.github.com/repos/${repo_owner}/${repo_name}/releases"
+
+    if command -v curl &> /dev/null; then
+        local response=""
+
+        # Use GITHUB_TOKEN if available for higher rate limits (but don't require it)
+        if [ -n "$GITHUB_TOKEN" ] && [ "$SIMULATE_PUBLIC" != "true" ]; then
+            response=$(curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Accept: application/vnd.github.v3+json" "${api_url}" 2>/dev/null)
+        else
+            # Public API - works without auth (60 requests/hour limit)
+            response=$(curl -s -H "Accept: application/vnd.github.v3+json" "${api_url}" 2>/dev/null)
+        fi
+
+        # Check if we hit rate limit
+        if echo "$response" | grep -q '"message.*rate limit"'; then
+            return 1
+        fi
+
+        if [ -n "$response" ]; then
+            if command -v jq &> /dev/null; then
+                # Parse with jq - extract tag_name and remove 'v' prefix
+                echo "$response" | jq -r '.[].tag_name' 2>/dev/null | sed 's/^v//' | sort -V -r | uniq
+            else
+                # Parse manually without jq
+                echo "$response" | grep -o '"tag_name":"[^"]*"' | cut -d'"' -f4 | sed 's/^v//' | sort -V -r | uniq
+            fi
+        fi
+    fi
+}
+
+# Hybrid version fetcher: Try GHCR first, fall back to Releases API
+fetch_available_versions() {
+    local versions=""
+    local source=""
+
+    # Try GHCR API first if GITHUB_TOKEN is available (and not simulating public)
+    if [ -n "$GITHUB_TOKEN" ] && [ "$SIMULATE_PUBLIC" != "true" ]; then
+        versions=$(fetch_versions_from_ghcr)
+        if [ -n "$versions" ]; then
+            source="ghcr"
+            echo "$versions"
+            return 0
+        fi
+    fi
+
+    # Fall back to public Releases API
+    versions=$(fetch_versions_from_releases)
+    if [ -n "$versions" ]; then
+        source="releases"
+        echo "$versions"
+        return 0
+    fi
+
+    # Both failed
+    return 1
 }
 
 # List available versions
@@ -112,11 +180,51 @@ list_versions() {
     echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
     echo ""
 
-    echo -e "${YELLOW}📦 Fetching available versions from registry...${NC}"
-    local versions=$(fetch_available_versions)
+    # Show what mode we're in
+    if [ "$SIMULATE_PUBLIC" = "true" ]; then
+        echo -e "${YELLOW}🧪 Simulating public API access (GITHUB_TOKEN ignored)${NC}"
+        echo ""
+    fi
+
+    echo -e "${YELLOW}📦 Fetching available versions...${NC}"
+
+    # Try GHCR first
+    local versions=""
+    local source=""
+
+    if [ -n "$GITHUB_TOKEN" ] && [ "$SIMULATE_PUBLIC" != "true" ]; then
+        echo -e "${BLUE}   Trying GitHub Container Registry (authenticated)...${NC}"
+        versions=$(fetch_versions_from_ghcr)
+        if [ -n "$versions" ]; then
+            source="ghcr"
+            echo -e "${GREEN}   ✓ Successfully fetched from GHCR${NC}"
+        else
+            echo -e "${YELLOW}   ✗ GHCR failed, falling back to Releases API...${NC}"
+        fi
+    fi
+
+    # Fall back to Releases API
+    if [ -z "$versions" ]; then
+        echo -e "${BLUE}   Trying GitHub Releases (public API)...${NC}"
+        versions=$(fetch_versions_from_releases)
+        if [ -n "$versions" ]; then
+            source="releases"
+            echo -e "${GREEN}   ✓ Successfully fetched from Releases${NC}"
+        fi
+    fi
+
+    echo ""
 
     if [ -z "$versions" ]; then
-        echo -e "${YELLOW}⚠️  Could not fetch versions from registry${NC}"
+        echo -e "${YELLOW}⚠️  Could not fetch versions from GitHub${NC}"
+        echo -e "${YELLOW}   (Rate limit reached or network issue)${NC}"
+        echo ""
+        if [ -z "$GITHUB_TOKEN" ]; then
+            echo -e "${BLUE}💡 Tip: Set GITHUB_TOKEN for higher rate limits:${NC}"
+            echo -e "   ${GREEN}export GITHUB_TOKEN=ghp_xxxxxxxxxxxxx${NC}"
+            echo -e "   Rate limits: 60/hour → 5000/hour"
+            echo ""
+        fi
         echo -e "${YELLOW}   Common versions:${NC}"
         echo -e "   - ${GREEN}latest${NC} (most recent release)"
         echo -e "   - ${GREEN}0.1.1${NC}"
@@ -126,31 +234,50 @@ list_versions() {
         echo -e "   - ${GREEN}latest-mac${NC} (for macOS)"
         echo -e "   - ${GREEN}latest-jetson-orin${NC} (for Jetson Orin)"
         echo -e "   - ${GREEN}latest-jetson-thor${NC} (for Jetson Thor)"
-        echo ""
-        echo -e "${YELLOW}💡 Tip: Install 'jq' for automatic version detection:${NC}"
-        echo -e "   - Linux: ${GREEN}sudo apt install jq${NC}"
-        echo -e "   - Mac:   ${GREEN}brew install jq${NC}"
     else
         echo -e "${GREEN}✅ Available versions:${NC}"
         echo ""
 
-        # Filter and display versions
-        local base_versions=$(echo "$versions" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$|^latest$' | head -20)
-        local platform_versions=$(echo "$versions" | grep -E 'latest-(mac|jetson)' | head -10)
+        # Display differently based on source
+        if [ "$source" = "ghcr" ]; then
+            # GHCR has actual container tags - separate base and platform-specific
+            local base_versions=$(echo "$versions" | grep -E '^[0-9]+\.[0-9]+(\.[0-9]+)?$|^latest$' | head -20)
+            local platform_versions=$(echo "$versions" | grep -E -- '-(mac|jetson)' | head -20)
 
-        if [ -n "$base_versions" ]; then
-            echo -e "${BLUE}Base versions (multi-arch):${NC}"
-            echo "$base_versions" | while read -r version; do
+            if [ -n "$base_versions" ]; then
+                echo -e "${BLUE}Base versions (multi-arch):${NC}"
+                echo "$base_versions" | while read -r version; do
+                    echo -e "   - ${GREEN}${version}${NC}"
+                done
+                echo ""
+            fi
+
+            if [ -n "$platform_versions" ]; then
+                echo -e "${BLUE}Platform-specific versions:${NC}"
+                echo "$platform_versions" | while read -r version; do
+                    echo -e "   - ${GREEN}${version}${NC}"
+                done
+                echo ""
+            fi
+        else
+            # Releases API only has base versions - explain platform suffixes
+            echo -e "${BLUE}Base versions (from GitHub Releases):${NC}"
+            echo "$versions" | head -10 | while read -r version; do
                 echo -e "   - ${GREEN}${version}${NC}"
             done
             echo ""
-        fi
 
-        if [ -n "$platform_versions" ]; then
-            echo -e "${BLUE}Platform-specific versions:${NC}"
-            echo "$platform_versions" | while read -r version; do
-                echo -e "   - ${GREEN}${version}${NC}"
-            done
+            echo -e "${BLUE}Platform-specific versions (inferred):${NC}"
+            echo -e "   ${YELLOW}Note: Docker workflow creates these automatically for each release${NC}"
+            echo -e "   Each base version also available with platform suffix:"
+            echo -e "   - ${GREEN}<version>-mac${NC} (e.g., 0.1.1-mac)"
+            echo -e "   - ${GREEN}<version>-jetson-orin${NC} (e.g., 0.1.1-jetson-orin)"
+            echo -e "   - ${GREEN}<version>-jetson-thor${NC} (e.g., 0.1.1-jetson-thor)"
+            echo ""
+            echo -e "   Latest platform tags:"
+            echo -e "   - ${GREEN}latest-mac${NC}"
+            echo -e "   - ${GREEN}latest-jetson-orin${NC}"
+            echo -e "   - ${GREEN}latest-jetson-thor${NC}"
             echo ""
         fi
     fi
@@ -162,32 +289,34 @@ list_versions() {
 pick_version() {
     local platform_suffix="$1"
 
-    echo -e "${YELLOW}🔍 Fetching available versions...${NC}"
-    local versions=$(fetch_available_versions)
+    # All display output goes to stderr so it's not captured by $()
+    echo -e "${YELLOW}🔍 Fetching available versions...${NC}" >&2
+    local versions=$(fetch_available_versions 2>/dev/null)
 
     # Filter versions by platform
     local filtered_versions=""
     if [ -n "$platform_suffix" ]; then
         # Get platform-specific versions
-        filtered_versions=$(echo "$versions" | grep -E "^[0-9]+\.[0-9]+\.[0-9]+${platform_suffix}$|^latest${platform_suffix}$" | head -10)
+        filtered_versions=$(echo "$versions" | grep -E "^[0-9]+\.[0-9]+(\.[0-9]+)?${platform_suffix}$|^latest${platform_suffix}$" | head -10)
         # Also add base versions if it's not a platform-specific suffix
         if [ "$platform_suffix" = "" ]; then
-            local base_versions=$(echo "$versions" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$|^latest$' | head -10)
+            local base_versions=$(echo "$versions" | grep -E '^[0-9]+\.[0-9]+(\.[0-9]+)?$|^latest$' | head -10)
             filtered_versions="${base_versions}"
         fi
     else
-        filtered_versions=$(echo "$versions" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$|^latest$' | head -10)
+        filtered_versions=$(echo "$versions" | grep -E '^[0-9]+\.[0-9]+(\.[0-9]+)?$|^latest$' | head -10)
     fi
 
     if [ -z "$filtered_versions" ]; then
-        echo -e "${YELLOW}⚠️  Could not fetch versions from registry${NC}"
-        echo -e "${YELLOW}   Using 'latest' as default${NC}"
-        echo "latest"
-        return
+        echo -e "${YELLOW}⚠️  Could not fetch versions from registry${NC}" >&2
+        echo -e "${YELLOW}   Showing common versions${NC}" >&2
+        echo "" >&2
+
+        # Show default list
+        filtered_versions="latest"$'\n'"0.1.1"$'\n'"0.1.0"
     fi
 
-    echo ""
-    echo -e "${GREEN}Available versions:${NC}"
+    echo -e "${GREEN}Available versions:${NC}" >&2
     local version_array=()
     local index=1
 
@@ -195,21 +324,21 @@ pick_version() {
     while IFS= read -r version; do
         version_array+=("$version")
         if [ "$version" = "latest" ]; then
-            echo -e "  ${BLUE}[${index}]${NC} ${GREEN}${version}${NC} ${YELLOW}(recommended)${NC}"
+            echo -e "  ${BLUE}[${index}]${NC} ${GREEN}${version}${NC} ${YELLOW}(recommended)${NC}" >&2
         else
-            echo -e "  ${BLUE}[${index}]${NC} ${GREEN}${version}${NC}"
+            echo -e "  ${BLUE}[${index}]${NC} ${GREEN}${version}${NC}" >&2
         fi
         ((index++))
     done <<< "$filtered_versions"
 
-    echo ""
-    echo -e "${YELLOW}💡 Tip: Use --version flag to skip this prompt${NC}"
-    echo -e "   Example: $0 --version 0.2.0"
-    echo ""
+    echo "" >&2
+    echo -e "${YELLOW}💡 Tip: Use --version flag to skip this prompt${NC}" >&2
+    echo -e "   Example: $0 --version 0.2.0" >&2
+    echo "" >&2
 
     # Get user selection
     while true; do
-        read -p "Select version number [1] or enter custom version: " selection
+        read -p "Select version number [1] or enter custom version: " selection >&2
 
         # Default to 1 (latest) if empty
         if [ -z "$selection" ]; then
@@ -407,8 +536,8 @@ if [[ "$SELECTED_VERSION" =~ -mac$|-jetson-orin$|-jetson-thor$ ]]; then
 elif [ "$SELECTED_VERSION" = "latest" ] && [ -n "$PLATFORM_SUFFIX" ]; then
     # Latest with platform suffix
     IMAGE_TAG="latest${PLATFORM_SUFFIX}"
-elif [[ "$SELECTED_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && [ -n "$PLATFORM_SUFFIX" ]; then
-    # Semver with platform suffix
+elif [[ "$SELECTED_VERSION" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] && [ -n "$PLATFORM_SUFFIX" ]; then
+    # Semver with platform suffix (supports both X.Y and X.Y.Z)
     IMAGE_TAG="${SELECTED_VERSION}${PLATFORM_SUFFIX}"
 else
     # Use as-is (multi-arch image or custom tag)
