@@ -127,7 +127,7 @@ async def detect_local_service_and_model():
                         models = data.get("data", [])
                         if models:
                             # Prefer vision models
-                            vision_keywords = ["vision", "llava", "llama-3.2", "gemini"]
+                            vision_keywords = ["vision", "gemini", "qwen3", "ministral", "gemma", "moondream"]
                             for model in models:
                                 model_id = model.get("id", "")
                                 if any(keyword in model_id.lower() for keyword in vision_keywords):
@@ -926,10 +926,10 @@ def main():
     parser = argparse.ArgumentParser(
         description="WebRTC Live VLM WebUI - Real-time vision model interaction",
         epilog="Examples:\n"
-        "  vLLM:    python server.py --model llama-3.2-11b-vision-instruct --api-base http://localhost:8000/v1\n"
-        "  SGLang:  python server.py --model llama-3.2-11b-vision-instruct --api-base http://localhost:30000/v1\n"
-        "  Ollama:  python server.py --model llava:7b --api-base http://localhost:11434/v1\n"
-        "  HTTPS:   python server.py --model llava:7b --api-base http://localhost:11434/v1 --ssl-cert cert.pem --ssl-key key.pem",
+        "  vLLM:    python server.py --model qwen3-vl:2b-instruct --api-base http://localhost:8000/v1\n"
+        "  SGLang:  python server.py --model qwen3-vl:2b-instruct --api-base http://localhost:30000/v1\n"
+        "  Ollama:  python server.py --model qwen3-vl:2b-instruct --api-base http://localhost:11434/v1\n"
+        "  HTTPS:   python server.py --model qwen3-vl:2b-instruct --api-base http://localhost:11434/v1 --ssl-cert cert.pem --ssl-key key.pem",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
@@ -1014,7 +1014,7 @@ def main():
             if not api_base:
                 api_base = "https://integrate.api.nvidia.com/v1"
             if not model:
-                model = "meta/llama-3.2-11b-vision-instruct"
+                model = "qwen3-vl:2b-instruct"
             if api_key == "EMPTY":
                 logger.warning("⚠️  API key required for NVIDIA API Catalog")
                 logger.warning("   Set with: --api-key YOUR_API_KEY")

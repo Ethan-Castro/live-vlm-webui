@@ -25,10 +25,9 @@ Ollama provides the easiest way to run VLMs locally. All models listed below sup
 | Model | Sizes Available | Description | Best For |
 |-------|----------------|-------------|----------|
 | **qwen3-vl** | 2b, 4b, 8b, 30b, 32b, 235b | Most powerful vision-language model in Qwen family | Complex reasoning, tool use, cloud deployment |
-| **llama3.2-vision** | 11b, 90b | Meta's first vision-capable Llama model | General-purpose, high accuracy |
-| **llama4** | 16x17b, 128x17b | Meta's latest multimodal models | State-of-the-art performance, tool use |
-| **qwen2.5vl** | 3b, 7b, 32b, 72b | Flagship Qwen vision model | High performance, multilingual |
+| **ministral-3** | 3b | Latest Mistral compact multimodal model | Fast, efficient vision |
 | **gemma3** | 4b, 12b, 27b (vision); 270m, 1b (text-only) | Google's capable single-GPU model | Efficiency, single GPU deployment |
+| **moondream** | 1.8b | Tiny vision model for edge devices | Edge devices, low resource environments |
 
 ### Specialized Models
 
@@ -36,10 +35,6 @@ Ollama provides the easiest way to run VLMs locally. All models listed below sup
 |-------|----------------|-------------|----------|
 | **granite3.2-vision** | 2b | IBM's document understanding model | Tables, charts, diagrams, documents |
 | **moondream** | 1.8b | Tiny vision model for edge devices | Edge devices, low resource environments |
-| **llava** | 7b, 13b (vision); 34b (text-only) | Original vision encoder + Vicuna (v1.6) | General-purpose, well-tested |
-| **llava-llama3** | 8b | LLaVA fine-tuned on Llama 3 | Better benchmark scores than original |
-| **llava-phi3** | 3.8b | Small LLaVA based on Phi 3 Mini | Compact, efficient |
-| **bakllava** | 7b | Mistral 7B + LLaVA architecture | Mistral-based alternative |
 | **minicpm-v** | 8b | Multimodal LLM series | Compact, efficient |
 
 ### Mistral Models
@@ -53,25 +48,25 @@ Ollama provides the easiest way to run VLMs locally. All models listed below sup
 
 ```bash
 # Pull a model
-ollama pull llama3.2-vision:11b
+ollama pull qwen3-vl:2b-instruct
 
 # List available models
 ollama list
 
 # Run directly
-ollama run llama3.2-vision:11b
+ollama run qwen3-vl:2b-instruct
 
 # Use with Live VLM WebUI
 live-vlm-webui --api-base http://localhost:11434/v1 \
-               --model llama3.2-vision:11b
+               --model qwen3-vl:2b-instruct
 ```
 
 ### Size Recommendations
 
-- **Edge devices (Jetson Orin Nano):** moondream:1.8b, qwen2.5vl:3b, gemma3:4b
-- **Single GPU (8-16GB VRAM):** llama3.2-vision:11b, llava:7b, qwen2.5vl:7b, gemma3:4b
-- **High-end GPU (24GB+ VRAM):** llama3.2-vision:90b, qwen3-vl:32b, llama4, gemma3:12b/27b
-- **Cloud/Multi-GPU:** qwen3-vl:235b, llama4:128x17b
+- **Edge devices (Jetson Orin Nano):** moondream:1.8b, gemma3:4b
+- **Single GPU (8-16GB VRAM):** qwen3-vl:2b, gemma3:4b
+- **High-end GPU (24GB+ VRAM):** qwen3-vl:32b, gemma3:12b/27b
+- **Cloud/Multi-GPU:** qwen3-vl:235b
 
 ---
 
@@ -84,12 +79,6 @@ NVIDIA provides enterprise-grade VLMs through NIM (NVIDIA Inference Microservice
 ### Available Models
 
 > 🔍 **Note:** List verified from NVIDIA API (https://integrate.api.nvidia.com/v1/models). Check [build.nvidia.com](https://build.nvidia.com) for latest models and detailed specifications.
-
-#### Meta Models
-| Model | Parameters | Description | Best For |
-|-------|------------|-------------|----------|
-| **meta/llama-3.2-90b-vision-instruct** | 90b | Llama 3.2 Vision flagship | High accuracy, production use |
-| **meta/llama-3.2-11b-vision-instruct** | 11b | Llama 3.2 Vision compact | Balance of speed and quality |
 
 #### Microsoft Models
 | Model | Parameters | Description | Best For |
@@ -104,7 +93,6 @@ NVIDIA provides enterprise-grade VLMs through NIM (NVIDIA Inference Microservice
 | **nvidia/vila** | ~40b | General-purpose vision model | Versatile applications |
 | **nvidia/neva-22b** | 22b | NVGPT + CLIP | Balanced performance |
 | **nvidia/nemotron-nano-12b-v2-vl** | 12b | Compact Nemotron vision | Edge/efficient deployment |
-| **nvidia/llama-3.1-nemotron-nano-vl-8b-v1** | 8b | Llama-based vision variant | Compact, efficient |
 
 #### Google Models
 | Model | Parameters | Description | Best For |
@@ -126,7 +114,7 @@ NVIDIA provides enterprise-grade VLMs through NIM (NVIDIA Inference Microservice
 ```bash
 # Using NVIDIA API Catalog with Live VLM WebUI
 live-vlm-webui --api-base https://integrate.api.nvidia.com/v1 \
-               --model meta/llama-3.2-11b-vision-instruct \
+               --model microsoft/phi-3.5-vision-instruct \
                --api-key nvapi-xxxxxxxxxxxxx
 ```
 
@@ -137,7 +125,7 @@ live-vlm-webui --api-base https://integrate.api.nvidia.com/v1 \
 - ✅ Self-hosted NIM containers available
 - ✅ Optimized for NVIDIA GPUs
 - ✅ Production-ready APIs
-- ✅ **16 vision-capable models** verified from API
+- ✅ **Verified vision-capable models**
 
 ### How to List Available Models Yourself
 
@@ -241,21 +229,21 @@ live-vlm-webui --api-base https://api.anthropic.com/v1 \
 ### By Deployment Environment
 
 #### Local/On-Premise (Ollama)
-- **Best overall:** `llama3.2-vision:11b` or `qwen2.5vl:7b`
-- **Edge devices:** `moondream:1.8b` or `qwen2.5vl:3b`
-- **High-end hardware:** `llama3.2-vision:90b` or `qwen3-vl:32b`
+- **Best overall:** `qwen3-vl:2b`
+- **Edge devices:** `moondream:1.8b` or `gemma3:4b`
+- **High-end hardware:** `qwen3-vl:32b`
 - **Document analysis:** `granite3.2-vision:2b`
 
 #### Cloud API
 - **Best quality:** OpenAI `gpt-5` or Anthropic `claude-3.5-sonnet`
 - **Best value:** OpenAI `gpt-4o-mini` or Anthropic `claude-3-haiku`
-- **NVIDIA ecosystem:** NVIDIA API `meta/llama-3.2-11b-vision-instruct`
+- **NVIDIA ecosystem:** NVIDIA API `microsoft/phi-3.5-vision-instruct`
 
 ### By Use Case
 
 #### General Purpose Vision
 1. **Cloud:** gpt-5, claude-3.5-sonnet
-2. **Local:** llama3.2-vision:11b, qwen2.5vl:7b
+2. **Local:** qwen3-vl:2b
 
 #### Document Understanding
 1. **Local:** granite3.2-vision:2b
@@ -263,41 +251,34 @@ live-vlm-webui --api-base https://api.anthropic.com/v1 \
 
 #### OCR / Text Extraction
 1. **Cloud:** microsoft/phi-3.5-vision (NVIDIA)
-2. **Local:** qwen2.5vl:7b, llama3.2-vision:11b
+2. **Local:** qwen3-vl:2b
 
 #### Edge Deployment
 1. moondream:1.8b
-2. qwen2.5vl:3b
-3. gemma3:4b
+2. gemma3:4b
+3. qwen3-vl:2b
 
 #### Cost-Sensitive Production
 1. gpt-4o-mini (OpenAI)
 2. claude-3-haiku (Anthropic)
-3. llama3.2-vision:11b (self-hosted)
+3. qwen3-vl:2b (self-hosted)
 
 ### By Hardware
 
 #### 4-8GB VRAM
 - moondream:1.8b
-- qwen2.5vl:3b
 - gemma3:4b (⚠️ Note: gemma3:1b and gemma3:270m are text-only, no vision)
 
 #### 8-16GB VRAM
-- llama3.2-vision:11b
-- llava:7b
-- qwen2.5vl:7b
-- bakllava:7b
+- qwen3-vl:2b
+- gemma3:12b
 
 #### 24GB VRAM
-- llama3.2-vision:11b (fast)
-- qwen2.5vl:32b
-- llava:13b
+- qwen3-vl:32b
 - mistral-small3.2:24b
 
 #### 40GB+ VRAM or Multi-GPU
-- llama3.2-vision:90b
 - qwen3-vl:235b
-- llama4:16x17b
 
 ---
 
@@ -308,7 +289,7 @@ live-vlm-webui --api-base https://api.anthropic.com/v1 \
 #### Ollama
 ```bash
 # Check model details
-ollama show llama3.2-vision:11b
+ollama show qwen3-vl:2b-instruct
 
 # Look for indicators:
 # - "vision" in the name
@@ -338,10 +319,7 @@ These models cannot see images and will generate plausible but incorrect descrip
 #### ✅ Vision Models
 Always look for "vision" in the model name or verify multimodal capabilities:
 
-- `llama3.2-vision:11b` ✓
-- `qwen2.5vl:7b` ✓ (vl = vision-language)
-- `llava:7b` ✓
-- `llava:13b` ✓
+- `qwen3-vl:2b-instruct` ✓
 - `moondream:latest` ✓
 - `gemma3:4b` ✓ (but not gemma3:1b or 270m)
 
@@ -397,6 +375,6 @@ Found a new VLM or noticed outdated information? Please contribute:
 
 ---
 
-**Last Updated:** November 2025
+**Last Updated:** January 2026
 
 **Note:** Model availability, pricing, and capabilities are subject to change. Always verify with the official provider documentation for the most current information.

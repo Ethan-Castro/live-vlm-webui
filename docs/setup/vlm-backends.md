@@ -9,16 +9,17 @@ This guide covers different VLM backend options to power your Live VLM WebUI.
 ```bash
 # Install ollama from https://ollama.ai/download
 # Pull a vision model
-ollama pull llama3.2-vision:11b
+ollama pull qwen3-vl:2b-instruct
 
 # Start ollama server
 ollama serve
 ```
 
 **Recommended Models:**
-- `llama3.2-vision:11b` - Good balance of quality and speed
-- `llava:7b` - Faster, lighter model
-- `llava:13b` - Higher quality
+- `qwen3-vl:2b-instruct` - Very fast, great for edge devices
+- `ministral-3:3b` - Latest Mistral compact vision model
+- `gemma3:4b` - Google's capable multimodal model
+- `moondream` - Tiny, efficient vision model for edge
 
 ---
 
@@ -32,8 +33,9 @@ pip install vllm
 
 # Start vLLM server with a vision model
 python -m vllm.entrypoints.openai.api_server \
-  --model meta-llama/Llama-3.2-11B-Vision-Instruct \
-  --port 8000
+  --model microsoft/Phi-3.5-vision-instruct \
+  --port 8000 \
+  --trust-remote-code
 ```
 
 ### vLLM on Jetson Thor (Docker)
@@ -61,12 +63,6 @@ vllm serve microsoft/Phi-3.5-vision-instruct --trust-remote-code
 ```bash
 # Smaller, faster (4B parameters)
 vllm serve microsoft/Phi-3.5-vision-instruct --trust-remote-code
-
-# Llama 3.2 Vision (11B parameters, higher quality)
-vllm serve meta-llama/Llama-3.2-11B-Vision-Instruct --trust-remote-code
-
-# Qwen2-VL (7B parameters, good balance)
-vllm serve Qwen/Qwen2-VL-7B-Instruct --trust-remote-code
 ```
 
 ---
@@ -81,8 +77,9 @@ pip install "sglang[all]"
 
 # Start SGLang server
 python -m sglang.launch_server \
-  --model-path meta-llama/Llama-3.2-11B-Vision-Instruct \
-  --port 30000
+  --model-path microsoft/Phi-3.5-vision-instruct \
+  --port 30000 \
+  --trust-remote-code
 ```
 
 ---
@@ -94,16 +91,16 @@ python -m sglang.launch_server \
 **1. Get your API Key:**
 - Visit [NVIDIA API Catalog](https://build.nvidia.com/)
 - Sign in with your NVIDIA account (free)
-- Navigate to a vision model (e.g., [Llama 3.2 Vision](https://build.nvidia.com/meta/llama-3.2-90b-vision-instruct))
+- Navigate to a vision model (e.g., [Phi-3.5 Vision](https://build.nvidia.com/microsoft/phi-3-5-vision-instruct))
 - Click "Get API Key"
 
 **2. Test with curl:**
 ```bash
-curl -X POST "https://ai.api.nvidia.com/v1/gr/meta/llama-3.2-90b-vision-instruct/chat/completions" \
+curl -X POST "https://ai.api.nvidia.com/v1/gr/microsoft/phi-3-5-vision-instruct/chat/completions" \
   -H "Authorization: Bearer nvapi-YOUR_KEY_HERE" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "meta/llama-3.2-90b-vision-instruct",
+    "model": "microsoft/phi-3-5-vision-instruct",
     "messages": [
       {
         "role": "user",
@@ -117,12 +114,10 @@ curl -X POST "https://ai.api.nvidia.com/v1/gr/meta/llama-3.2-90b-vision-instruct
 **3. Configure in WebUI:**
 - **API Base URL**: `https://ai.api.nvidia.com/v1/gr`
 - **API Key**: `nvapi-YOUR_KEY_HERE`
-- **Model**: `meta/llama-3.2-90b-vision-instruct`
+- **Model**: `microsoft/phi-3-5-vision-instruct`
 
 **Available Vision Models:**
-- `meta/llama-3.2-90b-vision-instruct` - Highest quality, 90B parameters
-- `meta/llama-3.2-11b-vision-instruct` - Good balance
-- `microsoft/phi-3-vision-128k-instruct` - Fast, 4.2B parameters
+- `microsoft/phi-3.5-vision-instruct` - Fast, 4.2B parameters
 - `nvidia/neva-22b` - NVIDIA's vision model
 
 **Notes:**
