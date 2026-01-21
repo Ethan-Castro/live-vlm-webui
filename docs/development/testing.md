@@ -50,7 +50,7 @@ The `test_real_workflow.py` E2E test is comprehensive but currently too resource
 The E2E test **could theoretically run in CI** with these adaptations:
 
 1. **Replace local Ollama with cloud VLM APIs:**
-   - Use OpenAI GPT-4V, NVIDIA API Catalog, or Anthropic Claude Vision
+   - Use Anthropic Claude Vision, NVIDIA API Catalog, or local Ollama models
    - No GPU or local models required
    - Removes the biggest blocker for CI
 

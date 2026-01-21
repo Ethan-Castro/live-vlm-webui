@@ -56,6 +56,7 @@ live-vlm-webui
 - ✅ DGX Spark (ARM64)
 - ✅ macOS (Apple Silicon)
 - ✅ Windows (via WSL2) - need to run Ollma on WSL. See [Windows WSL Setup Guide](./docs/usage/windows-wsl.md)
+- ✅ **Raspberry Pi 5** - CPU-only mode with optimized defaults. See [Raspberry Pi Setup Guide](./docs/setup/raspberry-pi.md)
 - ⚠️ **Jetson (Orin, Thor)** - pip works but Docker is simpler. See [Jetson Quick Start](#-jetson-quick-start) below
 
 ---
@@ -311,7 +312,6 @@ Choose the VLM backend that fits your needs:
 | **vLLM** ⚠️      | 🔴 Varies (works best on PC) | Widest HF model support | 🏠 Yes (local) |
 | **NVIDIA NIM** ⚠️ | 🟡 Medium | Limited VLM selection (improving) | 🏠 Yes (local) |
 | **NVIDIA API Catalog** ✅ | 🟢 Easy | 12+ hosted VLMs     | ☁️ No (cloud) |
-| **OpenAI API** ⚠️        | 🟢 Easy | GPT-4o, GPT-4o-mini | ☁️ No (cloud) |
 
 > **Legend**: ✅ Tested | ⚠️ Has auto-detection but not fully validated
 
@@ -483,6 +483,7 @@ Includes:
 - 📹 [RTSP IP Camera Setup](./docs/usage/rtsp-ip-cameras.md) - 🧪 Beta feature for continuous monitoring (tested: Reolink RLC-811A)
 - 🐋 [Docker Compose Details](./docs/setup/docker-compose-details.md) - Complete stack setup with Ollama or NIM
 - 🛠️ [Docker Deployment Guide](./docs/setup/docker.md) - Complete Docker setup and troubleshooting
+- 🍓 [Raspberry Pi 5 Setup](./docs/setup/raspberry-pi.md) - CPU-only mode with optimized defaults for Pi 5
 - ⚙️ [Advanced Configuration](./docs/usage/advanced-configuration.md) - Performance tuning, custom prompts, API compatibility
 
 ### For Developers

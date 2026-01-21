@@ -8,7 +8,6 @@ A comprehensive list of Vision-Language Models available across different provid
 
 - [Ollama](#ollama)
 - [NVIDIA API Catalog](#nvidia-api-catalog)
-- [OpenAI](#openai)
 - [Anthropic](#anthropic)
 - [Choosing the Right Model](#choosing-the-right-model)
 
@@ -33,7 +32,6 @@ Ollama provides the easiest way to run VLMs locally. All models listed below sup
 
 | Model | Sizes Available | Description | Best For |
 |-------|----------------|-------------|----------|
-| **granite3.2-vision** | 2b | IBM's document understanding model | Tables, charts, diagrams, documents |
 | **moondream** | 1.8b | Tiny vision model for edge devices | Edge devices, low resource environments |
 | **minicpm-v** | 8b | Multimodal LLM series | Compact, efficient |
 
@@ -91,7 +89,6 @@ NVIDIA provides enterprise-grade VLMs through NIM (NVIDIA Inference Microservice
 | Model | Parameters | Description | Best For |
 |-------|------------|-------------|----------|
 | **nvidia/vila** | ~40b | General-purpose vision model | Versatile applications |
-| **nvidia/neva-22b** | 22b | NVGPT + CLIP | Balanced performance |
 | **nvidia/nemotron-nano-12b-v2-vl** | 12b | Compact Nemotron vision | Edge/efficient deployment |
 
 #### Google Models
@@ -139,48 +136,6 @@ curl -s https://integrate.api.nvidia.com/v1/models \
 ```
 
 Models with "vision", "vl" (vision-language), or "multimodal" in their names support image input.
-
----
-
-## OpenAI
-
-OpenAI provides state-of-the-art multimodal models through their API.
-
-> **API Documentation:** [https://platform.openai.com/docs/guides/vision](https://platform.openai.com/docs/guides/vision)
-
-### Available Models
-
-| Model | Description | Best For |
-|-------|-------------|----------|
-| **gpt-5** | Latest flagship model (released Aug 2025) | State-of-the-art quality, most advanced |
-| **gpt-4o** | Previous flagship multimodal model | High quality, complex reasoning |
-| **gpt-4o-mini** | Faster, more affordable GPT-4o | Cost-effective, good quality |
-| **gpt-4-turbo** | Previous generation with vision | High quality, lower cost |
-| **gpt-4-vision-preview** | Earlier vision preview | Legacy applications |
-
-### Usage Example
-
-```bash
-# Using OpenAI with Live VLM WebUI
-live-vlm-webui --api-base https://api.openai.com/v1 \
-               --model gpt-5 \
-               --api-key sk-xxxxxxxxxxxxx
-```
-
-### Features
-
-- ✅ Industry-leading accuracy
-- ✅ Fast response times
-- ✅ Excellent instruction following
-- ✅ Multimodal (text + images)
-- 💰 Pay-per-use pricing
-
-### Pricing Considerations
-
-- **gpt-5:** Highest quality, highest cost
-- **gpt-4o:** High quality, premium pricing
-- **gpt-4o-mini:** Best balance of quality and cost
-- **gpt-4-turbo:** Middle ground option
 
 ---
 
@@ -232,22 +187,22 @@ live-vlm-webui --api-base https://api.anthropic.com/v1 \
 - **Best overall:** `qwen3-vl:2b`
 - **Edge devices:** `moondream:1.8b` or `gemma3:4b`
 - **High-end hardware:** `qwen3-vl:32b`
-- **Document analysis:** `granite3.2-vision:2b`
+- **OCR / Document analysis:** `microsoft/phi-3.5-vision-instruct` (via NVIDIA NIM)
 
 #### Cloud API
-- **Best quality:** OpenAI `gpt-5` or Anthropic `claude-3.5-sonnet`
-- **Best value:** OpenAI `gpt-4o-mini` or Anthropic `claude-3-haiku`
+- **Best quality:** Anthropic `claude-3.5-sonnet`
+- **Best value:** Anthropic `claude-3-haiku`
 - **NVIDIA ecosystem:** NVIDIA API `microsoft/phi-3.5-vision-instruct`
 
 ### By Use Case
 
 #### General Purpose Vision
-1. **Cloud:** gpt-5, claude-3.5-sonnet
+1. **Cloud:** claude-3.5-sonnet
 2. **Local:** qwen3-vl:2b
 
 #### Document Understanding
-1. **Local:** granite3.2-vision:2b
-2. **Cloud:** google/deplot (NVIDIA), gpt-5
+1. **Local:** qwen3-vl:2b (versatile for docs)
+2. **Cloud:** google/deplot (NVIDIA)
 
 #### OCR / Text Extraction
 1. **Cloud:** microsoft/phi-3.5-vision (NVIDIA)
@@ -259,9 +214,8 @@ live-vlm-webui --api-base https://api.anthropic.com/v1 \
 3. qwen3-vl:2b
 
 #### Cost-Sensitive Production
-1. gpt-4o-mini (OpenAI)
-2. claude-3-haiku (Anthropic)
-3. qwen3-vl:2b (self-hosted)
+1. claude-3-haiku (Anthropic)
+2. qwen3-vl:2b (self-hosted)
 
 ### By Hardware
 

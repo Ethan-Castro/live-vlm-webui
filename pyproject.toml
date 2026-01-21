@@ -50,11 +50,27 @@ dependencies = [
     "openai>=1.54.3",
     "httpx>=0.27.2",
     "av>=12.3.0",
-    "nvidia-ml-py>=11.5.0",
     "psutil>=5.9.8",
 ]
 
 [project.optional-dependencies]
+# GPU monitoring (NVIDIA systems) - optional on Pi/ARM
+gpu = [
+    "nvidia-ml-py>=11.5.0",
+]
+# Object detection (YOLO) - optional, heavy dependency
+yolo = [
+    "ultralytics>=8.3.67",
+]
+# Full installation (default for x86/GPU systems)
+full = [
+    "nvidia-ml-py>=11.5.0",
+    "ultralytics>=8.3.67",
+]
+# Minimal installation for Raspberry Pi (no GPU deps, no YOLO)
+pi = [
+    # Core deps only, no heavy ML libraries
+]
 dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.21.0",

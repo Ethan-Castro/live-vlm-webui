@@ -75,10 +75,13 @@ limitations under the License.
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+            font-family: "Helvetica Neue", Helvetica, Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
-            min-height: 100vh;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
             transition: background 0.3s ease, color 0.3s ease;
         }
 
@@ -102,8 +105,7 @@ limitations under the License.
             display: flex;
             justify-content: space-between;
             align-items: center;
-            position: sticky;
-            top: 0;
+            flex-shrink: 0;
             z-index: 1000;
             backdrop-filter: blur(10px);
         }
@@ -126,7 +128,26 @@ limitations under the License.
             font-size: 20px;
             font-weight: 600;
             color: var(--text-primary);
+            margin-top: 4px;
             margin-bottom: 2px;
+        }
+
+        .cuny-brand {
+            font-family: "Akzidenz-Grotesk BQ Light", "Akzidenz-Grotesk BQ Light Condensed", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            font-size: 11px;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            line-height: 1.1;
+        }
+
+        .csi-brand {
+            font-family: "Akzidenz-Grotesk BQ Medium", "Akzidenz-Grotesk BQ Bold", "Helvetica Neue Bold", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--text-primary);
+            line-height: 1.1;
         }
 
         .title-section .subtitle {
@@ -364,17 +385,49 @@ limitations under the License.
         /* Main Layout */
         .container {
             display: flex;
-            height: calc(100vh - 65px);
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
         }
 
         /* Sidebar */
         .sidebar {
             width: 350px;
+            min-width: 250px;
+            max-width: 600px;
             background: var(--bg-secondary);
             border-right: 1px solid var(--border-color);
             overflow-y: auto;
             overflow-x: visible;
             padding: 20px;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .sidebar.hidden {
+            width: 0 !important;
+            min-width: 0 !important;
+            padding: 0 !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            border-right: none !important;
+        }
+
+        .sidebar-resize-handle {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 5px;
+            height: 100%;
+            cursor: ew-resize;
+            background: transparent;
+            transition: background 0.2s;
+            z-index: 100;
+        }
+
+        .sidebar-resize-handle:hover,
+        .sidebar-resize-handle.dragging {
+            background: var(--accent-color);
         }
 
         .panel {
@@ -730,6 +783,13 @@ limitations under the License.
             flex: 1;
             overflow-y: auto;
             padding: 20px;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+        }
+
+        .main-content.expanded {
+            max-width: 100%;
         }
 
         /* Status Badge */
@@ -761,19 +821,52 @@ limitations under the License.
 
         /* Video Display */
         .video-card {
-            background: var(--card-bg);
+            background: transparent;
+            margin-bottom: 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .video-container {
+            position: relative;
+            display: inline-block;
+            background: #000;
             border: 1px solid var(--border-color);
             border-radius: 12px;
             overflow: hidden;
-            margin-bottom: 20px;
-            position: relative;
+            max-width: 100%;
+            resize: both;
+            min-width: 320px;
+            min-height: 180px;
+        }
+
+        .video-container::-webkit-resizer {
+            background: var(--accent-color);
+            border-radius: 0 0 12px 0;
         }
 
         video {
-            width: 100%;
             display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
             background: #000;
             transition: transform 0.3s ease;
+        }
+
+        #overlayCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
         }
 
         /* Video Overlay Text */
@@ -1148,9 +1241,11 @@ limitations under the License.
         }
 
         .logo .lucide,
+        .logo img,
         .logo svg {
-            width: 42px;
             height: 42px;
+            width: auto;
+            display: block;
             filter: drop-shadow(0 0 8px var(--accent-color));
         }
 
@@ -1195,11 +1290,13 @@ limitations under the License.
     <div class="header">
         <div class="header-left">
             <div class="logo">
-                <i data-lucide="graduation-cap"></i>
+                <img src="images/csi-logo.svg" alt="CSI Logo">
             </div>
             <div class="title-section">
+                <div class="cuny-brand">THE CITY UNIVERSITY OF NEW YORK</div>
+                <div class="csi-brand">College of Staten Island</div>
                 <h1>Live VLM WebUI</h1>
-                <div class="subtitle">College of Staten Island - AI Research Platform</div>
+                <div class="subtitle">AI Research Platform</div>
             </div>
         </div>
         <div class="header-right">
@@ -1263,6 +1360,13 @@ limitations under the License.
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
+                        <div class="settings-item">
+                            <div><div class="settings-item-label">YOLO Segmentation</div></div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="yoloToggle" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
                     </div>
                 </div>
                 <div>
@@ -1289,7 +1393,8 @@ limitations under the License.
 
     <div class="container">
         <!-- Sidebar -->
-        <div class="sidebar">
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-resize-handle" id="sidebarResizeHandle"></div>
             <div class="panel">
                 <div class="panel-header" onclick="togglePanel('vlmConfig')">
                     <div class="panel-title"><i data-lucide="globe" style="margin-right:8px;"></i> VLM API Configuration</div>
@@ -1356,13 +1461,19 @@ limitations under the License.
                 <div class="panel-content" id="promptEditor">
                     <select id="promptPreset">
                         <option value="">-- Presets --</option>
-                        <option value="Describe what you see in one sentence.">Description</option>
+                        <option value="Describe what you see in one sentence.">Brief Description</option>
+                        <option value="Provide a detailed description of the scene, including objects, actions, and atmosphere.">Detailed Description</option>
+                        <option value="List the main objects and people visible in this image.">Object List</option>
+                        <option value="What is the main action happening in this scene?">Action Detection</option>
+                        <option value="Read any text visible in the image.">OCR / Text Reading</option>
+                        <option value="Is there anything unusual or out of place in this image?">Anomaly Detection</option>
                     </select>
                     <textarea id="promptText" style="margin-top:10px">Describe what you see in one sentence.</textarea>
                     <div class="form-group" style="margin-top:10px">
                         <label>Max Tokens</label>
                         <input type="number" id="maxTokens" value="512">
                     </div>
+                    <button class="btn btn-secondary" id="updatePromptBtn" style="margin-top:10px">UPDATE PROMPT</button>
                 </div>
             </div>
         </div>
@@ -1370,11 +1481,15 @@ limitations under the License.
         <!-- Main Content -->
         <div class="main-content">
             <div class="video-card">
-                <div class="video-controls">
-                    <button class="video-control-btn" id="mirrorBtn"><i data-lucide="flip-horizontal"></i> Mirror</button>
+                <div class="video-container">
+                    <div class="video-controls">
+                        <button class="video-control-btn" id="mirrorBtn" title="Flip Horizontal"><i data-lucide="flip-horizontal"></i> Mirror</button>
+                        <button class="video-control-btn" id="expandBtn" title="Toggle Wide View"><i data-lucide="maximize"></i> Wide</button>
+                    </div>
+                    <video id="videoElement" autoplay playsinline muted></video>
+                    <canvas id="overlayCanvas"></canvas>
+                    <div class="video-overlay" id="videoOverlay"></div>
                 </div>
-                <video id="videoElement" autoplay playsinline muted></video>
-                <div class="video-overlay" id="videoOverlay"></div>
             </div>
 
             <div class="result-card">
@@ -1438,13 +1553,72 @@ limitations under the License.
         const markdownToggle = document.getElementById('markdownToggle');
         const copyButton = document.getElementById('copyButton');
         const modelSelect = document.getElementById('modelSelect');
+        const cameraSelect = document.getElementById('cameraSelect');
+        const refreshModelsBtn = document.getElementById('refreshModelsBtn');
+        const modelName = document.getElementById('modelName');
         const apiBaseUrl = document.getElementById('apiBaseUrl');
         const apiKey = document.getElementById('apiKey');
+        const apiPresetsBtn = document.getElementById('apiPresetsBtn');
+        const apiPresetsMenu = document.getElementById('apiPresetsMenu');
         const promptText = document.getElementById('promptText');
         const maxTokens = document.getElementById('maxTokens');
         const processEvery = document.getElementById('processEvery');
         const maxLatency = document.getElementById('maxLatency');
         const videoOverlay = document.getElementById('videoOverlay');
+        const overlayCanvas = document.getElementById('overlayCanvas');
+        const ctx = overlayCanvas.getContext('2d');
+        const promptPreset = document.getElementById('promptPreset');
+        const expandBtn = document.getElementById('expandBtn');
+        const mirrorBtn = document.getElementById('mirrorBtn');
+        const layoutOrder = document.getElementById('layoutOrder');
+        const overlayPosition = document.getElementById('overlayPosition');
+        const popInToggle = document.getElementById('popInToggle');
+        const glowToggle = document.getElementById('glowToggle');
+        const yoloToggle = document.getElementById('yoloToggle');
+        const gpuUpdateInterval = document.getElementById('gpuUpdateInterval');
+        const videoCard = document.querySelector('.video-card');
+        const resultCard = document.querySelector('.result-card');
+        const statsCard = document.getElementById('systemStatsCard');
+        const updatePromptBtn = document.getElementById('updatePromptBtn');
+
+        // COLOR PALETTE FOR YOLO
+        const classColors = {};
+        function getClassColor(classId) {
+            if (classColors[classId]) return classColors[classId];
+            
+            // Generate a high-contrast color based on class ID
+            const hue = (classId * 137.508) % 360; // Use golden angle for even distribution
+            const color = `hsl(${hue}, 70%, 50%)`;
+            const rgb = hslToRgb(hue/360, 0.7, 0.5);
+            classColors[classId] = {
+                stroke: `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.9)`,
+                fill: `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.45)`,
+                label: `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`
+            };
+            return classColors[classId];
+        }
+
+        function hslToRgb(h, s, l) {
+            let r, g, b;
+            if (s === 0) {
+                r = g = b = l;
+            } else {
+                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                const p = 2 * l - q;
+                const hue2rgb = (p, q, t) => {
+                    if (t < 0) t += 1;
+                    if (t > 1) t -= 1;
+                    if (t < 1/6) return p + (q - p) * 6 * t;
+                    if (t < 1/2) return q;
+                    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                    return p;
+                };
+                r = hue2rgb(p, q, h + 1/3);
+                g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1/3);
+            }
+            return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+        }
 
         let peerConnection = null;
         let localStream = null;
@@ -1484,14 +1658,28 @@ limitations under the License.
                 const data = JSON.parse(e.data);
                 if (data.type === 'vlm_response') {
                     if (data.text !== lastText) {
-                        resultText.classList.remove('fade', 'new-message');
-                        void resultText.offsetWidth;
-                        resultText.classList.add('new-message');
-                        if (document.getElementById('glowToggle').checked) resultText.classList.add('with-glow');
+                        if (popInToggle.checked) {
+                            resultText.classList.remove('fade', 'new-message');
+                            void resultText.offsetWidth;
+                            resultText.classList.add('new-message');
+                        }
+                        
+                        if (glowToggle.checked) resultText.classList.add('with-glow');
+                        else resultText.classList.remove('with-glow');
+
                         updateResultText(data.text);
                         videoOverlay.textContent = data.text;
                         lastText = data.text;
                     }
+                    
+                    // Draw YOLO detections
+                    if (data.detections) {
+                        drawDetections(data.detections);
+                    } else {
+                        // Clear canvas if no detections
+                        ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+                    }
+
                     if (data.metrics) {
                         metricsInline.style.display = 'flex';
                         document.getElementById('latencyValue').textContent = Math.round(data.metrics.last_latency_ms);
@@ -1499,10 +1687,245 @@ limitations under the License.
                     }
                 } else if (data.type === 'gpu_stats') {
                     updateGPUStats(data.stats);
+                } else if (data.type === 'server_config') {
+                    // Update UI with server config
+                    if (data.model) {
+                        modelName.textContent = data.model;
+                        // Select the model in dropdown if it exists
+                        const option = Array.from(modelSelect.options).find(o => o.value === data.model);
+                        if (option) modelSelect.value = data.model;
+                        else {
+                            // If model not in list, add it as temporary option
+                            const newOpt = new Option(data.model, data.model, true, true);
+                            modelSelect.add(newOpt);
+                        }
+                    }
+                    if (data.api_base) apiBaseUrl.value = data.api_base;
+                    if (data.prompt) {
+                        promptText.value = data.prompt;
+                        currentPrompt.textContent = data.prompt;
+                    }
+                } else if (data.type === 'model_updated') {
+                    modelName.textContent = data.model;
+                    modelSelect.value = data.model;
+                } else if (data.type === 'prompt_updated') {
+                    promptText.value = data.prompt;
+                    if (data.max_tokens) maxTokens.value = data.max_tokens;
+                    currentPrompt.textContent = data.prompt;
                 }
             };
             websocket.onclose = () => setTimeout(connectWebSocket, 2000);
         }
+
+        // MODELS
+        async function fetchModels() {
+            const originalText = refreshModelsBtn.innerHTML;
+            refreshModelsBtn.innerHTML = '<i data-lucide="loader-2" class="spin"></i>';
+            lucide.createIcons();
+            
+            try {
+                const base = apiBaseUrl.value.trim();
+                const key = apiKey.value.trim();
+                const url = `/models?api_base=${encodeURIComponent(base)}&api_key=${encodeURIComponent(key)}`;
+                
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                if (data.error) throw new Error(data.error);
+                
+                modelSelect.innerHTML = '';
+                if (data.models && data.models.length > 0) {
+                    data.models.forEach(m => {
+                        const opt = new Option(m.name, m.id);
+                        if (m.current) {
+                            opt.selected = true;
+                            modelName.textContent = m.id;
+                        }
+                        modelSelect.add(opt);
+                    });
+                } else {
+                    modelSelect.innerHTML = '<option value="">No models found</option>';
+                }
+            } catch (e) {
+                console.error('Error fetching models:', e);
+                modelSelect.innerHTML = '<option value="">Error loading models</option>';
+            } finally {
+                refreshModelsBtn.innerHTML = originalText;
+                lucide.createIcons();
+            }
+        }
+
+        // CAMERAS
+        async function fetchCameras() {
+            try {
+                // Request permission first to get device labels
+                await navigator.mediaDevices.getUserMedia({ video: true });
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(d => d.kind === 'videoinput');
+                
+                cameraSelect.innerHTML = '';
+                if (videoDevices.length > 0) {
+                    videoDevices.forEach((d, i) => {
+                        const opt = new Option(d.label || `Camera ${i + 1}`, d.deviceId);
+                        cameraSelect.add(opt);
+                    });
+                } else {
+                    cameraSelect.innerHTML = '<option value="">No cameras found</option>';
+                }
+            } catch (e) {
+                console.error('Error fetching cameras:', e);
+                cameraSelect.innerHTML = '<option value="">Permission denied</option>';
+            }
+        }
+
+        // PRESETS
+        apiPresetsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            apiPresetsMenu.style.display = apiPresetsMenu.style.display === 'none' ? 'block' : 'none';
+        });
+
+        document.querySelectorAll('.api-preset-item').forEach(item => {
+            item.addEventListener('click', () => {
+                apiBaseUrl.value = item.dataset.url;
+                apiPresetsMenu.style.display = 'none';
+                fetchModels();
+            });
+        });
+
+        document.addEventListener('click', () => {
+            apiPresetsMenu.style.display = 'none';
+        });
+
+        modelSelect.addEventListener('change', () => {
+            const model = modelSelect.value;
+            if (model && websocket && websocket.readyState === WebSocket.OPEN) {
+                websocket.send(JSON.stringify({
+                    type: 'update_model',
+                    model: model,
+                    api_base: apiBaseUrl.value.trim(),
+                    api_key: apiKey.value.trim()
+                }));
+            }
+        });
+
+        refreshModelsBtn.addEventListener('click', fetchModels);
+
+        // PROMPT EDITOR
+        function updatePrompt() {
+            const prompt = promptText.value.trim();
+            const tokens = parseInt(maxTokens.value);
+            if (prompt && websocket && websocket.readyState === WebSocket.OPEN) {
+                websocket.send(JSON.stringify({
+                    type: 'update_prompt',
+                    prompt: prompt,
+                    max_tokens: tokens
+                }));
+                currentPrompt.textContent = prompt;
+            }
+        }
+
+        promptText.addEventListener('change', updatePrompt);
+        maxTokens.addEventListener('change', updatePrompt);
+        
+        promptPreset.addEventListener('change', () => {
+            if (promptPreset.value) {
+                promptText.value = promptPreset.value;
+                updatePrompt();
+            }
+        });
+
+        updatePromptBtn.addEventListener('click', updatePrompt);
+
+        // SETTINGS HANDLERS
+        layoutOrder.addEventListener('change', () => {
+            if (layoutOrder.value === 'video-first') {
+                videoCard.style.order = '1';
+                resultCard.style.order = '2';
+                statsCard.style.order = '3';
+            } else {
+                resultCard.style.order = '1';
+                videoCard.style.order = '2';
+                statsCard.style.order = '3';
+            }
+        });
+
+        overlayPosition.addEventListener('change', () => {
+            videoOverlay.className = 'video-overlay ' + overlayPosition.value;
+            if (overlayPosition.value !== 'none') {
+                videoOverlay.classList.add('show');
+            } else {
+                videoOverlay.classList.remove('show');
+            }
+        });
+
+        maxLatency.addEventListener('change', () => {
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                websocket.send(JSON.stringify({
+                    type: 'update_max_latency',
+                    max_latency: parseFloat(maxLatency.value)
+                }));
+            }
+        });
+
+        processEvery.addEventListener('change', () => {
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                websocket.send(JSON.stringify({
+                    type: 'update_processing',
+                    process_every: parseInt(processEvery.value)
+                }));
+            }
+        });
+
+        yoloToggle.addEventListener('change', () => {
+            if (!yoloToggle.checked) {
+                ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            }
+        });
+
+        gpuUpdateInterval.addEventListener('change', () => {
+            // This is handled by the server loop sleep interval, 
+            // but we could send a message to update it if the server supported it.
+            // For now, it's just a UI placeholder or we can implement it.
+        });
+
+        // VIDEO CONTROLS
+        mirrorBtn.addEventListener('click', () => {
+            videoElement.classList.toggle('mirrored');
+            mirrorBtn.classList.toggle('active');
+        });
+
+        expandBtn.addEventListener('click', () => {
+            const sidebar = document.querySelector('.sidebar');
+            const mainContent = document.querySelector('.main-content');
+            const isHidden = sidebar.classList.toggle('hidden');
+            mainContent.classList.toggle('expanded');
+            
+            if (isHidden) {
+                expandBtn.innerHTML = '<i data-lucide="minimize"></i> Standard';
+                expandBtn.classList.add('active');
+            } else {
+                expandBtn.innerHTML = '<i data-lucide="maximize"></i> Wide';
+                expandBtn.classList.remove('active');
+            }
+            lucide.createIcons();
+        });
+
+        // RTSP TABS
+        document.querySelectorAll('.input-source-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.input-source-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                const source = tab.dataset.source;
+                if (source === 'webcam') {
+                    document.getElementById('webcamControls').style.display = 'block';
+                    document.getElementById('rtspControls').style.display = 'none';
+                } else {
+                    document.getElementById('webcamControls').style.display = 'none';
+                    document.getElementById('rtspControls').style.display = 'block';
+                }
+            });
+        });
 
         function updateResultText(text) {
             const content = document.getElementById('resultTextContent');
@@ -1532,25 +1955,218 @@ limitations under the License.
             }
         }
 
+        // DRAW DETECTIONS
+        function drawDetections(detections) {
+            if (!yoloToggle.checked) return;
+
+            // Resize canvas to match video display size
+            const rect = videoElement.getBoundingClientRect();
+            if (overlayCanvas.width !== rect.width || overlayCanvas.height !== rect.height) {
+                overlayCanvas.width = rect.width;
+                overlayCanvas.height = rect.height;
+            }
+
+            ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            
+            if (!detections || detections.length === 0) return;
+
+            // Get actual video dimensions
+            const videoWidth = videoElement.videoWidth;
+            const videoHeight = videoElement.videoHeight;
+            
+            if (!videoWidth || !videoHeight) return;
+
+            // Handle object-fit: cover/contain scaling
+            const containerWidth = rect.width;
+            const containerHeight = rect.height;
+            const containerRatio = containerWidth / containerHeight;
+            const videoRatio = videoWidth / videoHeight;
+
+            let scale, offsetX = 0, offsetY = 0;
+            const objectFit = window.getComputedStyle(videoElement).objectFit;
+
+            if (objectFit === 'cover') {
+                scale = Math.max(containerWidth / videoWidth, containerHeight / videoHeight);
+                offsetX = (containerWidth - videoWidth * scale) / 2;
+                offsetY = (containerHeight - videoHeight * scale) / 2;
+            } else if (objectFit === 'contain') {
+                scale = Math.min(containerWidth / videoWidth, containerHeight / videoHeight);
+                offsetX = (containerWidth - videoWidth * scale) / 2;
+                offsetY = (containerHeight - videoHeight * scale) / 2;
+            } else {
+                // Default to stretch/fill
+                const scaleX = containerWidth / videoWidth;
+                const scaleY = containerHeight / videoHeight;
+                // Simplified case for non-uniform scaling
+                drawDetectionsLegacy(detections, scaleX, scaleY, rect);
+                return;
+            }
+
+            const isMirrored = videoElement.classList.contains('mirrored');
+
+            detections.forEach(det => {
+                const [x1, y1, x2, y2] = det.box;
+                const label = det.label;
+                const conf = det.conf;
+                const colors = getClassColor(det.class_id || 0);
+
+                // Map coordinates to canvas space
+                let bx = x1 * scale + offsetX;
+                const by = y1 * scale + offsetY;
+                let bw = (x2 - x1) * scale;
+                const bh = (y2 - y1) * scale;
+
+                // Mirror if needed
+                if (isMirrored) {
+                    bx = containerWidth - bx - bw;
+                }
+
+                // Draw box
+                ctx.strokeStyle = colors.stroke;
+                ctx.lineWidth = 2;
+                ctx.strokeRect(bx, by, bw, bh);
+
+                // Draw label background
+                ctx.fillStyle = colors.label;
+                ctx.font = 'bold 12px sans-serif';
+                const labelText = `${label} ${Math.round(conf * 100)}%`;
+                const textWidth = ctx.measureText(labelText).width;
+                ctx.fillRect(bx, by - 20, textWidth + 10, 20);
+
+                // Draw label text
+                ctx.fillStyle = 'white';
+                ctx.fillText(labelText, bx + 5, by - 5);
+
+                // Draw segmentation mask if available
+                if (det.mask && det.mask.length > 0) {
+                    ctx.beginPath();
+                    det.mask.forEach((point, index) => {
+                        let px = point[0] * scale + offsetX;
+                        let py = point[1] * scale + offsetY;
+                        
+                        if (isMirrored) {
+                            px = containerWidth - px;
+                        }
+
+                        if (index === 0) ctx.moveTo(px, py);
+                        else ctx.lineTo(px, py);
+                    });
+                    ctx.closePath();
+                    
+                    // Semi-transparent fill for the mask - "paint" look
+                    ctx.fillStyle = colors.fill; 
+                    ctx.fill();
+                    
+                    // Outline the mask
+                    ctx.strokeStyle = colors.stroke;
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                }
+            });
+        }
+
+        // Legacy/Fallback draw function for simple XY scaling
+        function drawDetectionsLegacy(detections, scaleX, scaleY, rect) {
+            const isMirrored = videoElement.classList.contains('mirrored');
+            detections.forEach(det => {
+                const [x1, y1, x2, y2] = det.box;
+                let bx = x1 * scaleX;
+                const by = y1 * scaleY;
+                let bw = (x2 - x1) * scaleX;
+                const bh = (y2 - y1) * scaleY;
+                if (isMirrored) bx = rect.width - bx - bw;
+                ctx.strokeStyle = '#009CDE';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(bx, by, bw, bh);
+                
+                // Simplified mask draw
+                if (det.mask && det.mask.length > 0) {
+                    ctx.beginPath();
+                    det.mask.forEach((p, i) => {
+                        let px = p[0] * scaleX;
+                        let py = p[1] * scaleY;
+                        if (isMirrored) px = rect.width - px;
+                        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+                    });
+                    ctx.closePath();
+                    ctx.fillStyle = 'rgba(0, 156, 222, 0.4)';
+                    ctx.fill();
+                }
+            });
+        }
+
         // START/STOP
         async function start() {
             try {
-                localStream = await navigator.mediaDevices.getUserMedia({ video: true });
-                videoElement.srcObject = localStream;
+                const activeTab = document.querySelector('.input-source-tab.active');
+                const isRtsp = activeTab && activeTab.dataset.source === 'rtsp';
+                
+                let body = {
+                    sdp: '',
+                    type: 'offer'
+                };
+
                 peerConnection = new RTCPeerConnection();
-                localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
+                
+                // Handle incoming tracks (important for RTSP)
+                peerConnection.ontrack = (event) => {
+                    console.log('Received remote track:', event.track.kind);
+                    if (event.track.kind === 'video') {
+                        videoElement.srcObject = event.streams[0];
+                    }
+                };
+
+                if (isRtsp) {
+                    const rtspUrl = document.getElementById('rtspUrl').value.trim();
+                    if (!rtspUrl) {
+                        alert('Please enter an RTSP URL');
+                        return;
+                    }
+                    body.rtsp_url = rtspUrl;
+                } else {
+                    const constraints = {
+                        video: {
+                            deviceId: cameraSelect.value ? { exact: cameraSelect.value } : undefined,
+                            aspectRatio: { ideal: 16 / 9 }
+                        }
+                    };
+                    localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                    // For webcam, we can show local stream for zero latency
+                    videoElement.srcObject = localStream;
+                    
+                    localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
+                }
+
                 const offer = await peerConnection.createOffer();
                 await peerConnection.setLocalDescription(offer);
+                body.sdp = offer.sdp;
+                body.type = offer.type;
+
+                updateStatus('Connecting...', 'connecting');
+                
                 const res = await fetch('/offer', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({sdp: offer.sdp, type: offer.type})
+                    body: JSON.stringify(body)
                 });
+                
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.error || 'Failed to start streaming');
+                }
+                
                 const answer = await res.json();
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-                startBtn.disabled = true; stopBtn.disabled = false; isAnalysisRunning = true;
-                updateStatus('Streaming', 'connected');
-            } catch (e) { console.error(e); }
+
+                startBtn.disabled = true; 
+                stopBtn.disabled = false; 
+                isAnalysisRunning = true;
+                updateStatus(isRtsp ? 'RTSP Active' : 'Streaming', 'connected');
+            } catch (e) { 
+                console.error(e); 
+                updateStatus('Error', 'disconnected');
+                alert('Error: ' + e.message);
+            }
         }
 
         function stop() {
@@ -1565,8 +2181,40 @@ limitations under the License.
         document.getElementById('settingsBtn').addEventListener('click', () => document.getElementById('settingsModal').classList.add('show'));
         document.getElementById('settingsClose').addEventListener('click', () => document.getElementById('settingsModal').classList.remove('show'));
 
+        // SIDEBAR RESIZE
+        const sidebar = document.getElementById('sidebar');
+        const resizeHandle = document.getElementById('sidebarResizeHandle');
+        let isResizing = false;
+
+        resizeHandle.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            resizeHandle.classList.add('dragging');
+            document.body.style.cursor = 'ew-resize';
+            document.body.style.userSelect = 'none';
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            const newWidth = e.clientX;
+            if (newWidth >= 250 && newWidth <= 600) {
+                sidebar.style.width = newWidth + 'px';
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                resizeHandle.classList.remove('dragging');
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+            }
+        });
+
         window.onload = () => {
             connectWebSocket();
+            fetchModels();
+            fetchCameras();
             lucide.createIcons();
         };
     </script>

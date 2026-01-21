@@ -179,11 +179,11 @@ def browser_context_args(browser_context_args):
         **browser_context_args,
         "ignore_https_errors": True,  # Accept self-signed certificates
         "viewport": {
-            "width": 960,
-            "height": 1200,
-        },  # Narrower to show main content, taller for better view
+            "width": 1280,
+            "height": 720,
+        },  # 16:9 aspect ratio
         "record_video_dir": "test-results/videos/",  # Record video of tests
-        "record_video_size": {"width": 960, "height": 1200},  # Match viewport for recording
+        "record_video_size": {"width": 1280, "height": 720},  # Match viewport for recording
         # Grant camera and microphone permissions automatically
         "permissions": ["camera", "microphone"],
     }

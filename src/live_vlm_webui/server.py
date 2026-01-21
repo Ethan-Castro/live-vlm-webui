@@ -37,8 +37,16 @@ from aiortc.contrib.media import MediaRelay
 
 from .vlm_service import VLMService
 from .video_processor import VideoProcessorTrack
-from .gpu_monitor import create_monitor
+from .gpu_monitor import create_monitor, is_pi_mode, is_raspberry_pi, set_pi_mode, get_pi_model
 from .rtsp_track import RTSPVideoTrack
+
+# Try to import YOLO service - it's optional (especially on Pi)
+try:
+    from .object_detection_service import ObjectDetectionService
+    YOLO_AVAILABLE = True
+except ImportError:
+    ObjectDetectionService = None
+    YOLO_AVAILABLE = False
 
 # Configure logging
 logging.basicConfig(
@@ -50,6 +58,7 @@ logger = logging.getLogger(__name__)
 relay = MediaRelay()
 pcs = set()
 vlm_service = None
+detection_service = None
 websockets = set()  # Track active WebSocket connections
 gpu_monitor = None  # GPU monitoring instance
 gpu_monitor_task = None  # Background task for GPU monitoring
@@ -157,6 +166,22 @@ async def index(request):
 
 async def models(request):
     """Return available models from the VLM API"""
+    # Pi mode: only allow specific models
+    PI_ALLOWED_MODELS = ["qwen3-vl:2b-instruct", "qwen3vl:2b-instruct", "qwen3vl-2b-instruct"]
+    
+    def filter_models_for_pi(models_list):
+        """Filter models to only Pi-compatible ones in Pi mode"""
+        if not is_pi_mode():
+            return models_list
+        filtered = [
+            m for m in models_list 
+            if any(allowed.lower() in m["id"].lower() for allowed in PI_ALLOWED_MODELS)
+        ]
+        # If no matching models found, return a placeholder
+        if not filtered:
+            return [{"id": "qwen3-vl:2b-instruct", "name": "qwen3-vl:2b-instruct (Pi mode)", "current": True}]
+        return filtered
+    
     try:
         # Check if custom API base and key are provided in query params
         api_base = request.rel_url.query.get("api_base")
@@ -172,8 +197,9 @@ async def models(request):
                 {"id": model.id, "name": model.id, "current": False}
                 for model in models_response.data
             ]
+            models_list = filter_models_for_pi(models_list)
             return web.Response(
-                content_type="application/json", text=json.dumps({"models": models_list})
+                content_type="application/json", text=json.dumps({"models": models_list, "pi_mode": is_pi_mode()})
             )
         elif vlm_service:
             # Use the server's VLM service
@@ -182,13 +208,14 @@ async def models(request):
                 {"id": model.id, "name": model.id, "current": model.id == vlm_service.model}
                 for model in models_response.data
             ]
+            models_list = filter_models_for_pi(models_list)
             return web.Response(
-                content_type="application/json", text=json.dumps({"models": models_list})
+                content_type="application/json", text=json.dumps({"models": models_list, "pi_mode": is_pi_mode()})
             )
         else:
             return web.Response(
                 content_type="application/json",
-                text=json.dumps({"models": [], "error": "VLM service not initialized"}),
+                text=json.dumps({"models": [], "error": "VLM service not initialized", "pi_mode": is_pi_mode()}),
             )
     except Exception as e:
         logger.error(f"Error fetching models: {e}")
@@ -200,12 +227,13 @@ async def models(request):
                     {
                         "models": [
                             {"id": vlm_service.model, "name": vlm_service.model, "current": True}
-                        ]
+                        ],
+                        "pi_mode": is_pi_mode()
                     }
                 ),
             )
         return web.Response(
-            content_type="application/json", text=json.dumps({"models": [], "error": str(e)})
+            content_type="application/json", text=json.dumps({"models": [], "error": str(e), "pi_mode": is_pi_mode()})
         )
 
 
@@ -275,6 +303,8 @@ async def websocket_handler(request):
                     "model": vlm_service.model,
                     "api_base": vlm_service.api_base,
                     "prompt": vlm_service.prompt,
+                    "pi_mode": is_pi_mode(),
+                    "yolo_available": detection_service is not None,
                 }
             )
 
@@ -386,12 +416,20 @@ async def websocket_handler(request):
     return ws
 
 
-def broadcast_text_update(text: str, metrics: dict):
-    """Broadcast text update and metrics to all connected WebSocket clients"""
+def broadcast_text_update(text: str, metrics: dict, detections: list = None):
+    """Broadcast text update, metrics, and detections to all connected WebSocket clients"""
     if not websockets:
         return
 
-    message = json.dumps({"type": "vlm_response", "text": text, "metrics": metrics})
+    msg_data = {"type": "vlm_response", "text": text, "metrics": metrics}
+    if detections is not None:
+        msg_data["detections"] = detections
+        # Debug log to verify masks are being sent
+        mask_count = sum(1 for d in detections if "mask" in d)
+        if mask_count > 0:
+            logger.debug(f"Sending {len(detections)} detections ({mask_count} with masks)")
+
+    message = json.dumps(msg_data)
 
     # Send to all connected clients
     dead_websockets = set()
@@ -513,7 +551,10 @@ async def offer(request):
             relayed_rtsp = relay.subscribe(rtsp_track)
 
             processor_track = VideoProcessorTrack(
-                relayed_rtsp, vlm_service, text_callback=broadcast_text_update
+                relayed_rtsp, 
+                vlm_service, 
+                detection_service=detection_service,
+                text_callback=broadcast_text_update
             )
 
             # Add processor directly to peer connection
@@ -534,9 +575,12 @@ async def offer(request):
             logger.info(f"Received track: {track.kind}")
 
             if track.kind == "video":
-                # Create processor track with VLM service and text callback
+                # Create processor track with services and text callback
                 processor_track = VideoProcessorTrack(
-                    relay.subscribe(track), vlm_service, text_callback=broadcast_text_update
+                    relay.subscribe(track), 
+                    vlm_service, 
+                    detection_service=detection_service,
+                    text_callback=broadcast_text_update
                 )
 
                 # Add processed track back to connection
@@ -604,7 +648,10 @@ async def rtsp_start(request):
 
         # Create processor track (same as WebRTC path)
         processor_track = VideoProcessorTrack(
-            rtsp_track, vlm_service, text_callback=broadcast_text_update
+            rtsp_track, 
+            vlm_service, 
+            detection_service=detection_service,
+            text_callback=broadcast_text_update
         )
 
         # Start background task to consume frames
@@ -981,8 +1028,26 @@ def main():
         action="store_true",
         help="Disable SSL (not recommended - webcam requires HTTPS)",
     )
+    parser.add_argument(
+        "--pi-mode",
+        action="store_true",
+        help="Enable Raspberry Pi mode (CPU-friendly defaults, restricted models)",
+    )
 
     args = parser.parse_args()
+    
+    # Handle Pi mode - auto-detect or use CLI flag
+    if args.pi_mode:
+        set_pi_mode(True)
+        logger.info("Raspberry Pi mode enabled via --pi-mode flag")
+    elif is_raspberry_pi():
+        set_pi_mode(True)
+        pi_model = get_pi_model()
+        logger.info(f"Raspberry Pi mode auto-enabled: {pi_model}")
+    
+    # Log YOLO availability
+    if not YOLO_AVAILABLE:
+        logger.info("YOLO/ultralytics not available - object detection disabled")
 
     # Set default SSL cert paths to config directory if not specified
     if args.ssl_cert is None:
@@ -1020,19 +1085,59 @@ def main():
                 logger.warning("   Set with: --api-key YOUR_API_KEY")
                 logger.warning("   Or use WebUI to configure API settings after starting")
 
+    # Pi mode: enforce model restriction and CPU-friendly defaults
+    if is_pi_mode():
+        # Pi mode defaults (can be overridden via environment variables)
+        PI_DEFAULT_PROCESS_EVERY = int(os.environ.get("PI_PROCESS_EVERY", "60"))
+        PI_DEFAULT_MAX_TOKENS = int(os.environ.get("PI_MAX_TOKENS", "100"))
+        
+        # Restrict to qwen3vl-2b-instruct in Pi mode
+        PI_ALLOWED_MODELS = ["qwen3-vl:2b-instruct", "qwen3vl:2b-instruct", "qwen3vl-2b-instruct"]
+        if model and not any(allowed in model.lower() for allowed in [m.lower() for m in PI_ALLOWED_MODELS]):
+            logger.warning(f"Pi mode: Model '{model}' not recommended. Using qwen3-vl:2b-instruct")
+            model = "qwen3-vl:2b-instruct"
+        elif not model:
+            model = "qwen3-vl:2b-instruct"
+            logger.info("Pi mode: Using default model qwen3-vl:2b-instruct")
+        
+        # Pi-tuned defaults (less frequent processing to save CPU)
+        if args.process_every == 30:  # Only override if using default
+            args.process_every = PI_DEFAULT_PROCESS_EVERY
+            logger.info(f"Pi mode: Frame processing interval set to {PI_DEFAULT_PROCESS_EVERY} (CPU-friendly)")
+        
+        # Log Pi mode configuration
+        logger.info("Pi mode configuration:")
+        logger.info(f"  PI_PROCESS_EVERY: {PI_DEFAULT_PROCESS_EVERY} frames")
+        logger.info(f"  PI_MAX_TOKENS: {PI_DEFAULT_MAX_TOKENS}")
+        logger.info("  Override via environment variables: PI_PROCESS_EVERY, PI_MAX_TOKENS")
+    
     # Initialize VLM service
-    global vlm_service
+    global vlm_service, detection_service
     vlm_service = VLMService(model=model, api_base=api_base, api_key=api_key, prompt=args.prompt)
+    
+    # Initialize YOLO service (only if available and not explicitly disabled)
+    detection_service = None
+    if YOLO_AVAILABLE and ObjectDetectionService is not None:
+        try:
+            detection_service = ObjectDetectionService()
+            detection_service.initialize()
+            logger.info("YOLO object detection service initialized")
+        except Exception as e:
+            logger.warning(f"YOLO service initialization failed (non-critical): {e}")
+            detection_service = None
+    else:
+        logger.info("Object detection disabled (ultralytics not installed)")
 
     # Log initialization with better formatting
     service_name = "Local" if "localhost" in api_base or "127.0.0.1" in api_base else "Cloud"
-    logger.info("Initialized VLM service:")
+    mode_str = " [Pi Mode]" if is_pi_mode() else ""
+    logger.info(f"Initialized VLM service{mode_str}:")
     logger.info(f"  Model: {model}")
     logger.info(f"  API: {api_base} ({service_name})")
     logger.info(f"  Prompt: {args.prompt}")
+    logger.info(f"  Object Detection: {'enabled' if detection_service else 'disabled'}")
 
-    # Update frame processing rate in VideoProcessorTrack if needed
-    # (This is a bit hacky but works for this demo)
+    # Update frame processing rate in VideoProcessorTrack
     VideoProcessorTrack.process_every_n_frames = args.process_every
 
     # Create web application using create_app

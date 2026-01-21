@@ -15,7 +15,7 @@
 
 """
 GPU Monitoring Module
-Supports multiple platforms: NVIDIA (NVML), Jetson Thor (jtop), Jetson Orin (jtop), Apple Silicon, AMD
+Supports multiple platforms: NVIDIA (NVML), Jetson Thor (jtop), Jetson Orin (jtop), Apple Silicon, Raspberry Pi, AMD
 """
 
 import logging
@@ -29,6 +29,102 @@ from typing import Optional, Dict, List
 from collections import deque
 
 logger = logging.getLogger(__name__)
+
+
+# Global Pi mode state
+_pi_mode_enabled = False
+_pi_model = None
+
+
+def is_raspberry_pi() -> bool:
+    """
+    Detect if running on a Raspberry Pi.
+    
+    Returns:
+        True if running on Raspberry Pi, False otherwise
+    """
+    global _pi_model
+    
+    # Check environment variable override first
+    if os.environ.get("PI_MODE", "").lower() in ("1", "true", "yes"):
+        logger.info("Pi mode enabled via PI_MODE environment variable")
+        return True
+    
+    # Only check on Linux
+    if platform.system() != "Linux":
+        return False
+    
+    # Check /proc/device-tree/model (most reliable method)
+    try:
+        with open("/proc/device-tree/model", "r") as f:
+            model = f.read().strip().rstrip('\x00')
+            if "Raspberry Pi" in model:
+                _pi_model = model
+                return True
+    except (FileNotFoundError, PermissionError):
+        pass
+    
+    # Fallback: check /proc/cpuinfo for Raspberry Pi
+    try:
+        with open("/proc/cpuinfo", "r") as f:
+            content = f.read()
+            if "Raspberry Pi" in content or "BCM" in content:
+                # Try to extract model info
+                for line in content.split("\n"):
+                    if line.startswith("Model"):
+                        _pi_model = line.split(":")[1].strip()
+                        return True
+                # BCM chip detected but no model line
+                _pi_model = "Raspberry Pi"
+                return True
+    except (FileNotFoundError, PermissionError):
+        pass
+    
+    return False
+
+
+def get_pi_model() -> Optional[str]:
+    """
+    Get the Raspberry Pi model string.
+    
+    Returns:
+        Model string like "Raspberry Pi 5 Model B Rev 1.0" or None if not a Pi
+    """
+    global _pi_model
+    
+    if _pi_model:
+        return _pi_model
+    
+    # Try to detect if not already cached
+    if is_raspberry_pi():
+        return _pi_model
+    
+    return None
+
+
+def is_pi_mode() -> bool:
+    """
+    Check if Pi mode is currently enabled.
+    
+    Returns:
+        True if Pi mode is active
+    """
+    return _pi_mode_enabled
+
+
+def set_pi_mode(enabled: bool):
+    """
+    Enable or disable Pi mode.
+    
+    Args:
+        enabled: Whether to enable Pi mode
+    """
+    global _pi_mode_enabled
+    _pi_mode_enabled = enabled
+    if enabled:
+        logger.info("Raspberry Pi mode enabled")
+    else:
+        logger.info("Raspberry Pi mode disabled")
 
 
 def get_cpu_model() -> str:
@@ -1060,6 +1156,93 @@ class AppleSiliconMonitor(GPUMonitor):
         pass
 
 
+class RaspberryPiMonitor(GPUMonitor):
+    """
+    Raspberry Pi monitoring (CPU-only, no GPU).
+    
+    Provides system stats for Raspberry Pi devices where GPU monitoring
+    is not applicable. Optimized for Pi 5.
+    """
+
+    def __init__(self, history_size: int = 60):
+        super().__init__(history_size)
+        self.available = True
+        self.product_name = get_pi_model() or "Raspberry Pi"
+        
+        # Try to get more specific Pi model info
+        self._detect_pi_details()
+        
+        logger.info(f"Raspberry Pi monitoring initialized: {self.product_name}")
+        logger.info("CPU-only mode - no GPU monitoring available")
+
+    def _detect_pi_details(self):
+        """Detect Raspberry Pi hardware details"""
+        # Try to get CPU temperature path
+        self.temp_path = None
+        temp_paths = [
+            "/sys/class/thermal/thermal_zone0/temp",
+            "/sys/devices/virtual/thermal/thermal_zone0/temp",
+        ]
+        for path in temp_paths:
+            if os.path.exists(path):
+                self.temp_path = path
+                break
+        
+        # Try to get throttling status
+        self.throttle_path = None
+        if os.path.exists("/sys/devices/platform/soc/soc:firmware/get_throttled"):
+            self.throttle_path = "/sys/devices/platform/soc/soc:firmware/get_throttled"
+
+    def get_stats(self) -> Dict:
+        """Get current system stats for Raspberry Pi"""
+        system_stats = self.get_cpu_ram_stats()
+        
+        # Get CPU temperature
+        temp_c = None
+        if self.temp_path:
+            try:
+                with open(self.temp_path, "r") as f:
+                    temp_c = int(f.read().strip()) / 1000.0
+            except Exception:
+                pass
+        
+        # Check for throttling (Pi-specific)
+        throttled = None
+        if self.throttle_path:
+            try:
+                with open(self.throttle_path, "r") as f:
+                    throttle_val = int(f.read().strip(), 16)
+                    # Bit 0 = under-voltage, Bit 1 = arm frequency capped
+                    # Bit 2 = currently throttled, Bit 3 = soft temp limit
+                    throttled = throttle_val != 0
+            except Exception:
+                pass
+        
+        stats = {
+            "platform": "Raspberry Pi (CPU-only)",
+            "gpu_name": "N/A",
+            "product_name": self.product_name,
+            "gpu_percent": None,  # No GPU
+            "vram_used_gb": None,  # No VRAM
+            "vram_total_gb": None,
+            "vram_percent": None,
+            "temp_c": temp_c,
+            "power_w": None,  # Would need special hardware
+            "throttled": throttled,
+            "pi_mode": True,
+            **system_stats,
+        }
+        
+        # Update history (CPU only)
+        self.update_history(stats)
+        
+        return stats
+
+    def cleanup(self):
+        """Cleanup resources"""
+        pass
+
+
 class JetsonOrinMonitor(GPUMonitor):
     """Jetson Orin GPU monitoring using jtop (jetson_stats)"""
 
@@ -1404,12 +1587,14 @@ def create_monitor(platform: Optional[str] = None) -> GPUMonitor:
     Factory function to create appropriate GPU monitor
 
     Args:
-        platform: Force specific platform ('nvidia', 'jetson_orin', 'jetson_thor', 'apple', etc.)
+        platform: Force specific platform ('nvidia', 'jetson_orin', 'jetson_thor', 'apple', 'raspberry_pi', etc.)
                  If None, auto-detect
 
     Returns:
         Appropriate GPUMonitor instance
     """
+    global _pi_mode_enabled
+    
     # Force specific platform if requested
     if platform == "jetson_thor":
         return JetsonThorMonitor()
@@ -1417,6 +1602,21 @@ def create_monitor(platform: Optional[str] = None) -> GPUMonitor:
         return JetsonOrinMonitor()
     if platform == "apple" or platform == "apple_silicon":
         return AppleSiliconMonitor()
+    if platform == "raspberry_pi" or platform == "pi":
+        _pi_mode_enabled = True
+        return RaspberryPiMonitor()
+
+    # Auto-detect Raspberry Pi first (before other checks)
+    if platform is None and is_raspberry_pi():
+        logger.info(f"Auto-detected Raspberry Pi: {get_pi_model()}")
+        _pi_mode_enabled = True
+        return RaspberryPiMonitor()
+
+    # Check for PI_MODE environment variable forcing Pi mode on non-Pi hardware
+    if platform is None and os.environ.get("PI_MODE", "").lower() in ("1", "true", "yes"):
+        logger.info("Pi mode forced via PI_MODE environment variable")
+        _pi_mode_enabled = True
+        return RaspberryPiMonitor()
 
     # Auto-detect macOS / Apple Silicon
     import platform as platform_module

@@ -548,7 +548,7 @@ The text-only model doesn't actually see the image - it's just generating plausi
 - `phi3.5-vision` (vLLM/HuggingFace)
 - `microsoft/phi-3-vision-128k-instruct` (NVIDIA API Catalog)
 - `meta/llama-3.2-90b-vision-instruct` (NVIDIA API Catalog)
-- `gpt-5`, `gpt-4o`, `gpt-4-vision-preview` (OpenAI)
+- `claude-3.5-sonnet`, `claude-3-opus` (Anthropic)
 
 **❌ Incorrect Models (Text-Only - Will Hallucinate):**
 - `llama3.1:8b` ❌ (no vision)

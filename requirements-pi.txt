@@ -1,0 +1,24 @@
+# Raspberry Pi 5 minimal requirements
+# For CPU-only operation without heavy ML dependencies
+#
+# Install with: pip install -r requirements-pi.txt
+# Or use: pip install live-vlm-webui (without [full] extra)
+
+# Core dependencies
+aiohttp==3.9.5
+aiohttp-cors==0.7.0
+aiortc==1.9.0
+opencv-python==4.10.0.84
+numpy==1.26.4
+Pillow==10.4.0
+openai==1.54.3
+httpx==0.27.2
+av==12.3.0
+psutil==5.9.8
+
+# Note: nvidia-ml-py and ultralytics are NOT included
+# - nvidia-ml-py: Not needed (no NVIDIA GPU on Pi)
+# - ultralytics: Too heavy for Pi 5, uses excessive RAM
+#
+# To add YOLO support on Pi (not recommended):
+# pip install ultralytics

@@ -18,6 +18,30 @@ python server.py --help
 - `--api-key KEY` - API key, use `EMPTY` for local servers (default: `EMPTY`)
 - `--prompt TEXT` - Custom prompt for VLM (default: scene description)
 - `--process-every N` - Process every Nth frame (default: `30`)
+- `--pi-mode` - Enable Raspberry Pi mode (CPU-friendly defaults, restricted models)
+
+## Environment Variables
+
+### Raspberry Pi Mode
+
+When running on Raspberry Pi or with `--pi-mode`, these environment variables customize behavior:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PI_MODE` | auto | Set to `true` to force Pi mode on any hardware |
+| `PI_PROCESS_EVERY` | `60` | Frame processing interval in Pi mode |
+| `PI_MAX_TOKENS` | `100` | Maximum tokens for VLM responses in Pi mode |
+
+**Example:**
+
+```bash
+# Custom Pi mode settings
+export PI_PROCESS_EVERY=90
+export PI_MAX_TOKENS=50
+live-vlm-webui --pi-mode
+```
+
+See [Raspberry Pi Setup Guide](../setup/raspberry-pi.md) for detailed Pi configuration.
 
 ## Example Configurations
 
@@ -42,12 +66,11 @@ python server.py \
   --port 3000
 ```
 
-### Using OpenAI API
-
+### Using Custom API
 ```bash
 python server.py \
-  --model gpt-4-vision-preview \
-  --api-base https://api.openai.com/v1 \
+  --model microsoft/phi-3.5-vision-instruct \
+  --api-base https://your-proxy-or-nim-endpoint/v1 \
   --api-key your-api-key-here
 ```
 
@@ -95,7 +118,7 @@ Choose based on your hardware and needs:
 **High quality** (requires significant GPU memory):
 - `llama-3.2-90b-vision-instruct` (Ollama/NVIDIA)
 - `qwen2.5vl:32b` (Ollama)
-- `gpt-4-vision-preview` (via OpenAI API)
+- `microsoft/phi-3.5-vision-instruct` (via NVIDIA NIM)
 
 > ⚠️ **Note:** `llava:34b` is text-only and does not support vision despite smaller llava models having vision capabilities.
 
@@ -182,7 +205,7 @@ This tool uses the OpenAI chat completions API format with vision support. Any b
 - ✅ **vLLM** - Best performance, production-ready
 - ✅ **SGLang** - Great for complex prompts
 - ✅ **Ollama** - Easiest setup
-- ✅ **OpenAI API** - Cloud-based (requires API key)
+- ✅ **NVIDIA NIM** - Great for enterprise deployment
 
 ### Message Format
 

@@ -21,14 +21,19 @@ Handles video frames, adds text overlays, and manages VLM processing
 import asyncio
 import cv2
 import numpy as np
+import os
 from PIL import Image
 from aiortc import VideoStreamTrack
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 import logging
 import time
 import av
 
 from .vlm_service import VLMService
+
+# ObjectDetectionService is optional (especially on Pi)
+if TYPE_CHECKING:
+    from .object_detection_service import ObjectDetectionService
 
 # Enable swscaler warnings to track hardware acceleration status
 # TODO: Implement hardware-accelerated color space conversion on Jetson using NVMM/VPI
@@ -44,15 +49,17 @@ class VideoProcessorTrack(VideoStreamTrack):
     """
 
     # Class variable for frame processing interval (can be updated dynamically)
-    process_every_n_frames = 30
+    # Pi mode uses higher values (60) to reduce CPU load; set via PI_PROCESS_EVERY env var
+    process_every_n_frames = int(os.environ.get("PI_PROCESS_EVERY", "30")) if os.environ.get("PI_MODE", "").lower() in ("1", "true", "yes") else 30
     # Max allowed latency before dropping frames (in seconds, 0 = disabled)
     max_frame_latency = 0.0
 
-    def __init__(self, track: VideoStreamTrack, vlm_service: VLMService, text_callback=None):
+    def __init__(self, track: VideoStreamTrack, vlm_service: VLMService, detection_service: Optional["ObjectDetectionService"] = None, text_callback=None):
         super().__init__()
         self.track = track
         self.vlm_service = vlm_service
-        self.text_callback = text_callback  # Callback to send text updates
+        self.detection_service = detection_service
+        self.text_callback = text_callback  # Callback to send updates
         self.last_frame: Optional[np.ndarray] = None
         self.frame_count = 0
         self.dropped_frames = 0
@@ -157,6 +164,14 @@ class VideoProcessorTrack(VideoStreamTrack):
                 if self.frame_count == 1:
                     logger.info(f"First frame received: {img.shape}")
 
+                # Send frame to YOLO for detection (async, non-blocking)
+                if self.detection_service:
+                    # We can run YOLO more frequently than VLM if desired
+                    # For now, let's run it on the same interval or every few frames
+                    yolo_interval = 2  # Run YOLO every 2 frames for better responsiveness
+                    if self.frame_count % yolo_interval == 0:
+                        asyncio.create_task(self.detection_service.process_frame(img))
+
                 # Send frame to VLM for analysis (async, non-blocking)
                 if self.frame_count % interval == 0:
                     # Convert to PIL Image for VLM
@@ -165,15 +180,23 @@ class VideoProcessorTrack(VideoStreamTrack):
                     asyncio.create_task(self.vlm_service.process_frame(pil_img))
                     logger.info(f"Frame {self.frame_count}: Sending to VLM (interval={interval})")
 
-            # Get current response (may be old if VLM is still processing)
+            # Get current responses (may be old if still processing)
             response, is_processing = self.vlm_service.get_current_response()
+            
+            # Get YOLO detections
+            detections = []
+            if self.detection_service:
+                detections = self.detection_service.get_current_detections()
 
             # Get metrics
             metrics = self.vlm_service.get_metrics()
+            if self.detection_service:
+                metrics["yolo"] = self.detection_service.get_metrics()
 
-            # Send text update via callback (for WebSocket)
+            # Send update via callback (for WebSocket)
             if self.text_callback:
-                self.text_callback(response, metrics)
+                # Update signature to include detections
+                self.text_callback(response, metrics, detections)
 
             # Return original frame directly - zero-copy passthrough!
             # This avoids expensive BGR→YUV conversion
