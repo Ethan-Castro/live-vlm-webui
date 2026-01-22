@@ -167,7 +167,7 @@ async def index(request):
 async def models(request):
     """Return available models from the VLM API"""
     # Pi mode: only allow specific models
-    PI_ALLOWED_MODELS = ["qwen3-vl:2b-instruct", "qwen3vl:2b-instruct", "qwen3vl-2b-instruct"]
+    PI_ALLOWED_MODELS = ["qwen3-vl:2b-instruct", "qwen3vl:2b-instruct", "qwen3vl-2b-instruct", "moondream"]
     
     def filter_models_for_pi(models_list):
         """Filter models to only Pi-compatible ones in Pi mode"""
@@ -1091,8 +1091,8 @@ def main():
         PI_DEFAULT_PROCESS_EVERY = int(os.environ.get("PI_PROCESS_EVERY", "60"))
         PI_DEFAULT_MAX_TOKENS = int(os.environ.get("PI_MAX_TOKENS", "100"))
         
-        # Restrict to qwen3vl-2b-instruct in Pi mode
-        PI_ALLOWED_MODELS = ["qwen3-vl:2b-instruct", "qwen3vl:2b-instruct", "qwen3vl-2b-instruct"]
+        # Restrict to qwen3vl-2b-instruct or moondream in Pi mode
+        PI_ALLOWED_MODELS = ["qwen3-vl:2b-instruct", "qwen3vl:2b-instruct", "qwen3vl-2b-instruct", "moondream"]
         if model and not any(allowed in model.lower() for allowed in [m.lower() for m in PI_ALLOWED_MODELS]):
             logger.warning(f"Pi mode: Model '{model}' not recommended. Using qwen3-vl:2b-instruct")
             model = "qwen3-vl:2b-instruct"
