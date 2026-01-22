@@ -1626,6 +1626,7 @@ limitations under the License.
         let lastText = '';
         let isAnalysisRunning = false;
         let markdownEnabled = localStorage.getItem('markdownEnabled') !== 'false';
+        let isPiMode = false;
 
         // THEME
         function applyTheme(theme) {
@@ -1689,6 +1690,13 @@ limitations under the License.
                     updateGPUStats(data.stats);
                 } else if (data.type === 'server_config') {
                     // Update UI with server config
+                    isPiMode = !!data.pi_mode;
+                    if (isPiMode) {
+                        console.log('Pi Mode detected, applying optimizations');
+                        if (!localStorage.getItem('processEvery')) processEvery.value = 150;
+                        if (!localStorage.getItem('maxTokens')) maxTokens.value = 50;
+                    }
+
                     if (data.model) {
                         modelName.textContent = data.model;
                         // Select the model in dropdown if it exists
@@ -2127,6 +2135,8 @@ limitations under the License.
                     const constraints = {
                         video: {
                             deviceId: cameraSelect.value ? { exact: cameraSelect.value } : undefined,
+                            width: isPiMode ? { ideal: 640 } : { ideal: 1280 },
+                            height: isPiMode ? { ideal: 480 } : { ideal: 720 },
                             aspectRatio: { ideal: 16 / 9 }
                         }
                     };

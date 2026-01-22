@@ -1088,8 +1088,8 @@ def main():
     # Pi mode: enforce model restriction and CPU-friendly defaults
     if is_pi_mode():
         # Pi mode defaults (can be overridden via environment variables)
-        PI_DEFAULT_PROCESS_EVERY = int(os.environ.get("PI_PROCESS_EVERY", "60"))
-        PI_DEFAULT_MAX_TOKENS = int(os.environ.get("PI_MAX_TOKENS", "100"))
+        PI_DEFAULT_PROCESS_EVERY = int(os.environ.get("PI_PROCESS_EVERY", "150"))
+        PI_DEFAULT_MAX_TOKENS = int(os.environ.get("PI_MAX_TOKENS", "50"))
         
         # Restrict to qwen3vl-2b-instruct or moondream in Pi mode
         PI_ALLOWED_MODELS = ["qwen3-vl:2b-instruct", "qwen3vl:2b-instruct", "qwen3vl-2b-instruct", "moondream"]
