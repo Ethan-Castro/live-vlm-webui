@@ -1148,7 +1148,6 @@ def main():
     protocol = "http"
     if not args.no_ssl:
         # Try to auto-generate if certificates don't exist
-        import os
         import sys
 
         if not os.path.exists(args.ssl_cert) or not os.path.exists(args.ssl_key):
@@ -1187,7 +1186,6 @@ def main():
 
     # Get network addresses
     import socket
-    import subprocess
 
     # Run server
     logger.info(f"Starting server on {args.host}:{args.port}")
